@@ -1,0 +1,8 @@
+<launch>
+    <node pkg="prometheus_req_py" exec="equipment_state_sub" name="equipment_state_sub">
+    </node>
+    <node pkg="prometheus_req_py" exec="equipment_state_pub" name="equipment_state_pub">
+        <param from="$(find-pkg-share prometheus_req_bringup)/config/equipment_state_pub_config.yaml" />
+    </node>
+    
+</launch>

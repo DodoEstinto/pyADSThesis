@@ -1,0 +1,14 @@
+/equipment_state_pub:
+  ros__parameters:
+    robot_name: "Giskard"
+
+    remote_ip: '192.168.1.101'
+    remote_ads: '192.168.1.101.1.1'
+
+    CLIENT_NETID: '10.90.114.189.1.1'
+    CLIENT_IP: '192.168.1.59'
+
+    PLC_IP: '192.168.1.101'
+    PLC_NET_ID: '192.168.1.101.1.1'
+    
+

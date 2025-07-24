@@ -1,0 +1,12 @@
+bool ok
+bool nok
+bool depth_reached
+uint8 result_prg
+uint8 result_diag_tsype
+uint16 result_code
+float32 result_torque
+float32 result_pre_torque
+float32 result_angle
+float32 result_depth
+float32 result_screw_time
+uint32 result_cycle_no
