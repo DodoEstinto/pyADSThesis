@@ -17,10 +17,12 @@ from rclpy.node import Node
 from std_msgs.msg import String
 from getpass import getpass
 import pyads
+import random
 import time
 import ctypes
 
 from prometheus_req_interfaces.msg import EquipmentStatus
+from prometheus_req_interfaces.srv import CallFunctionBlock
 from prometheus_req_py.structures import ScrewSlot_ctype,EquipmentStatus_ctype,PLC_STRING_40
 
 #TODO:still old name, to change
@@ -32,6 +34,7 @@ class Equipment_State_Pub(Node):
         #always drop old msg in case of a slowdonw. Keep the newest.
         self.publisher_ = self.create_publisher(EquipmentStatus, 'state', 1)
         timer_period = 0.001  # seconds
+        self.client= self.create_service(CallFunctionBlock,"CallFunctionBlock",self.block_callback)
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
         self.declare_parameter("remote_ip","None")
@@ -64,6 +67,13 @@ class Equipment_State_Pub(Node):
         #statusMemory.nCycleTime=1
 
         test= self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
+
+
+    def block_callback(self,functionBlockName,response):
+        response.result=random.choice([True,False])
+        self.get_logger().info(f"Data:{functionBlockName},{response}")
+        return response
+    
 
     def status_callback(self,notification,data):
 

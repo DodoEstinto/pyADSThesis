@@ -17,11 +17,24 @@ from rclpy.node import Node
 from copy import deepcopy
 from std_msgs.msg import String
 from prometheus_req_interfaces.msg import EquipmentStatus
+from prometheus_req_interfaces.srv import CallFunctionBlock
 import tkinter as tk
 
 
 #TODO:still old name, to change
 class Equipment_State_Sub(Node):
+
+    def call_block(self, name):
+        self.get_logger().info(f"[Operator_node] Calling Block {name}")
+        self.req.function_block_name=name
+        self.client_request_response=self.client.call_async(self.req)
+        self.client_request_response.add_done_callback(self.update_callback)
+    
+    def update_callback(self,data):
+        #self.get_logger().info(f'CALLBACK: {data}')
+        self.update_labels()
+        
+
 
     def init_labels(self):
     # Reset all label fields to "N/A" and neutral background
@@ -33,6 +46,7 @@ class Equipment_State_Sub(Node):
         self.screw_text.delete('1.0', tk.END)
         self.screw_text.insert('1.0', "No ScrewBay data available.\n")
         self.screw_text.configure(state='disabled')
+
     def init_GUI(self, root):
         self.root = root
         self.root.title("Prometheus Operator Interface")
@@ -41,8 +55,17 @@ class Equipment_State_Sub(Node):
         label_font = ("Segoe UI", 10)
         header_font = ("Segoe UI", 12, "bold")
 
-        main_frame = tk.Frame(self.root, padx=10, pady=10)
-        main_frame.pack(fill='both', expand=True)
+        # --- Main window layout: split left (sections) and right (buttons) ---
+        outer_frame = tk.Frame(self.root)
+        outer_frame.pack(fill='both', expand=True)
+
+        # Left: content sections
+        content_frame = tk.Frame(outer_frame, padx=10, pady=10)
+        content_frame.pack(side='left', fill='both', expand=True)
+
+        # Right: buttons
+        button_frame = tk.Frame(outer_frame, padx=10, pady=10)
+        button_frame.pack(side='right', fill='y')
 
         def make_section(parent, title):
             frame = tk.LabelFrame(parent, text=title, font=header_font, padx=10, pady=10)
@@ -57,7 +80,7 @@ class Equipment_State_Sub(Node):
             self.labels[field] = value
 
         # --- Section 1: Checks ---
-        checks_frame = make_section(main_frame, "Checks")
+        checks_frame = make_section(content_frame, "Checks")
         checks_fields = [
             'em_general', 'em_mr', 'em_sr',
             'tem_sens_ok', 'air_press_ok',
@@ -67,7 +90,7 @@ class Equipment_State_Sub(Node):
             add_label(checks_frame, field, i)
 
         # --- Section 2: Positions ---
-        positions_frame = make_section(main_frame, "Positions")
+        positions_frame = make_section(content_frame, "Positions")
         positions_fields = [
             'mgse_to_conveyor', 'trolley_in_bay', 'side_2_robot',
             'positioner_is_up', 'positioner_is_down',
@@ -78,16 +101,14 @@ class Equipment_State_Sub(Node):
             add_label(positions_frame, field, i)
 
         # --- Section 3: ScrewBay ---
-        screwbay_frame = make_section(main_frame, "ScrewBay")
-
-        # Use a Text widget as a read-only display box
+        screwbay_frame = make_section(content_frame, "ScrewBay")
         self.screw_text = tk.Text(screwbay_frame, height=10, width=50, font=("Courier", 10))
         self.screw_text.pack()
         self.screw_text.insert('1.0', "Waiting for data...\n")
         self.screw_text.configure(state='disabled')
 
         # --- Section 4: States ---
-        states_frame = make_section(main_frame, "States")
+        states_frame = make_section(content_frame, "States")
         state_fields = [
             'active_state_fsm_string',
             'active_state_mr_fsm_string',
@@ -97,9 +118,45 @@ class Equipment_State_Sub(Node):
         ]
         for i, field in enumerate(state_fields):
             add_label(states_frame, field, i)
+
+        # --- Button column: "Calling Block" ---
+        button_header = tk.Label(button_frame, text="Blocks", font=header_font)
+        button_header.pack(pady=(0, 10))
+
+        building_blocks = [
+            "loadTray",
+            "pickUpTray",
+            "depositTray",
+            "srHoming",
+            "mrHoming",
+            "mrTrolleyVCheck",
+            "gyroGrpRot",
+            "screwTight",
+            "screwPickup",
+            "presentToScrew",
+            "positionerRotate",
+            "stackTray",
+            "present2Op",
+            "setScrewBayState"
+        ]
+
+        for i in range(len(building_blocks)):  # Adjust number of blocks here
+            btn = tk.Button(button_frame,width=40 ,text=f"Calling Block {i}: {building_blocks[i]}", command=lambda i=building_blocks[i]: self.call_block(i))
+            btn.pack(pady=5)
+
+        # --- Service Response Text Box ---
+        response_label = tk.Label(button_frame, text="Service Response:", font=header_font)
+        response_label.pack(pady=(20, 5))
+
+        self.response_text = tk.Text(button_frame, height=4, width=50, font=("Courier", 10))
+        self.response_text.pack()
+        self.response_text.insert('1.0', "Awaiting service call...\n")
+        self.response_text.configure(state='disabled')
+
         self.init_labels()
 
     def update_labels(self):
+
         def color(val):
             return "#c8e6c9" if val else "#ffcdd2"
 
@@ -135,6 +192,30 @@ class Equipment_State_Sub(Node):
             self.screw_text.insert(tk.END, f"max=({slot.max_idx_x},{slot.max_idx_y}) ")
             self.screw_text.insert(tk.END, f"next=({slot.next_idx_x},{slot.next_idx_y})\n")
         self.screw_text.configure(state='disabled')
+        
+        if self.client_request_response==None:
+            self.get_logger().info(f"client_request_response:N/A")
+        else:
+            self.get_logger().info(f"client_request_response:{self.client_request_response.result().result}")
+
+        
+        if(self.client_request_response!=None):
+            self.response_text.configure(state='normal')
+            self.response_text.delete('1.0', tk.END)
+            if(self.client_request_response.done()):
+                try:
+                    response = self.client_request_response.result()
+                    msg = f"[Success! Message: {response.result}"
+                except Exception as e:
+                    msg = f"Service call failed: {e}"
+                self.client_request_response=None
+            else:
+                msg="Waiting for a response..."
+            self.response_text.insert("1.0",msg)
+            self.response_text.configure(state="disabled")
+            
+
+
 
     def __init__(self,root):
         super().__init__('equipment_state_sub')
@@ -144,8 +225,13 @@ class Equipment_State_Sub(Node):
             'state',
             self.state_update_callback,
             1)
+        self.client_request_response=None
         self.init_GUI(root)
-        self.update_labels()
+        self.client=self.create_client(CallFunctionBlock,"CallFunctionBlock")
+        while not self.client.wait_for_service(timeout_sec=1):
+            #self.get_logger().info('service not available, waiting again...')
+            pass
+        self.req=CallFunctionBlock.Request()
         self.subscription  # prevent unused variable warning
 
     def state_update_callback(self, msg):
@@ -169,10 +255,16 @@ def main(args=None):
     
     root.after(1,update_ros)
 
-    root.mainloop()
-    equipment_state_sub.destroy_node()
-    rclpy.shutdown()
+  
 
+    def on_close():
+        equipment_state_sub.get_logger().info("[Operator_node] Shutting down...")
+        equipment_state_sub.destroy_node()
+        rclpy.shutdown()
+        root.destroy()  # closes the window and ends mainloop
+
+    root.protocol("WM_DELETE_WINDOW", on_close)  # handles window close
+    root.mainloop()
 
 if __name__ == '__main__':
     main()
