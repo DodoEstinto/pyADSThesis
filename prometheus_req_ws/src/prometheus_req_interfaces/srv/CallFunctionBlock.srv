@@ -1,3 +1,5 @@
 string function_block_name
 ---
 bool result
+bool busy
+int16 state

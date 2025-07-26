@@ -21,8 +21,7 @@ from prometheus_req_interfaces.srv import CallFunctionBlock
 import tkinter as tk
 
 
-#TODO:still old name, to change
-class Equipment_State_Sub(Node):
+class Operator_Node(Node):
 
     def call_block(self, name):
         self.get_logger().info(f"[Operator_node] Calling Block {name}")
@@ -218,7 +217,7 @@ class Equipment_State_Sub(Node):
 
 
     def __init__(self,root):
-        super().__init__('equipment_state_sub')
+        super().__init__('operator_node')
         self.state=EquipmentStatus()
         self.subscription = self.create_subscription(
             EquipmentStatus,
@@ -245,11 +244,11 @@ class Equipment_State_Sub(Node):
 def main(args=None):
     rclpy.init(args=args)
     root=tk.Tk()
-    equipment_state_sub = Equipment_State_Sub(root)
+    operator_node = Operator_Node(root)
 
     def update_ros():
-        rclpy.spin_once(equipment_state_sub,timeout_sec=0.005)
-        #equipment_state_sub.get_logger().info("[Operator_node]Spinning once...")
+        rclpy.spin_once(operator_node,timeout_sec=0.005)
+        #operator_node.get_logger().info("[Operator_node]Spinning once...")
         root.after(1, update_ros)  # Schedule the next call
 
     
@@ -258,8 +257,8 @@ def main(args=None):
   
 
     def on_close():
-        equipment_state_sub.get_logger().info("[Operator_node] Shutting down...")
-        equipment_state_sub.destroy_node()
+        operator_node.get_logger().info("[Operator_node] Shutting down...")
+        operator_node.destroy_node()
         rclpy.shutdown()
         root.destroy()  # closes the window and ends mainloop
 

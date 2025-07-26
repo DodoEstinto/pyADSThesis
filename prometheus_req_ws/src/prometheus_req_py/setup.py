@@ -21,8 +21,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'equipment_state_pub = prometheus_req_py.equipment_state_pub:main',
-            'equipment_state_sub = prometheus_req_py.equipment_state_sub:main'
+            'pyADS_node = prometheus_req_py.pyADS_node:main',
+            'operator_node = prometheus_req_py.operator_node:main'
         ],
     },
 )

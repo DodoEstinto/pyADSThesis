@@ -25,11 +25,10 @@ from prometheus_req_interfaces.msg import EquipmentStatus
 from prometheus_req_interfaces.srv import CallFunctionBlock
 from prometheus_req_py.structures import ScrewSlot_ctype,EquipmentStatus_ctype,PLC_STRING_40
 
-#TODO:still old name, to change
-class Equipment_State_Pub(Node):
+class pyADS_node(Node):
 
     def __init__(self):
-        super().__init__('equipment_state_pub')
+        super().__init__('pyads_node')
         self.init_s_time=time.time_ns()
         #always drop old msg in case of a slowdonw. Keep the newest.
         self.publisher_ = self.create_publisher(EquipmentStatus, 'state', 1)
@@ -80,7 +79,7 @@ class Equipment_State_Pub(Node):
         #WARNING: if you change the type of the notification, you have also to update it in the statusMemory init!
         handle,timestamp,value=self.plc.parse_notification(notification,EquipmentStatus_ctype)
         #handle,timestamp,value=self.plc.parse_notification(notification,ctypes.c_ubyte)
-
+    
         statusUpdate=EquipmentStatus()
         statusUpdate.em_general =  value.emGeneral
         statusUpdate.em_mr = value.emMR
@@ -116,9 +115,9 @@ class Equipment_State_Pub(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    equipment_state_pub =  Equipment_State_Pub()
-    rclpy.spin(equipment_state_pub)
-    equipment_state_pub.destroy_node()
+    pyads_node =  pyADS_node()
+    rclpy.spin(pyads_node)
+    pyads_node.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':
