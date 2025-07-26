@@ -22,20 +22,35 @@ import tkinter as tk
 
 
 class Operator_Node(Node):
+    '''
+    This node is designed to be used directly by a human operator. 
+    It provides a simplified interface for monitoring and controlling the system.
+    '''
 
-    def call_block(self, name):
+    def call_block(self, name:str):
+        '''
+        This function is called when the building block buttons are pressed.
+        It sends an async request to the service server.
+        '''
         self.get_logger().info(f"[Operator_node] Calling Block {name}")
         self.req.function_block_name=name
         self.client_request_response=self.client.call_async(self.req)
         self.client_request_response.add_done_callback(self.update_callback)
     
     def update_callback(self,data):
+        '''
+        This function is called when the service client receive a response.
+        It updates the GUI.
+        '''
         #self.get_logger().info(f'CALLBACK: {data}')
         self.update_labels()
         
 
 
     def init_labels(self):
+        '''
+        Init all the labels with default values.
+        '''
     # Reset all label fields to "N/A" and neutral background
         for field, label in self.labels.items():
             label.config(text="N/A", bg="#ddd")
@@ -46,7 +61,10 @@ class Operator_Node(Node):
         self.screw_text.insert('1.0', "No ScrewBay data available.\n")
         self.screw_text.configure(state='disabled')
 
-    def init_GUI(self, root):
+    def init_GUI(self, root:tk.Tk):
+        '''
+        Create the GUI
+        '''
         self.root = root
         self.root.title("Prometheus Operator Interface")
         self.labels = {}
@@ -66,7 +84,7 @@ class Operator_Node(Node):
         button_frame = tk.Frame(outer_frame, padx=10, pady=10)
         button_frame.pack(side='right', fill='y')
 
-        def make_section(parent, title):
+        def make_section(parent:tk.Frame, title:str) -> tk.LabelFrame:
             frame = tk.LabelFrame(parent, text=title, font=header_font, padx=10, pady=10)
             frame.pack(fill='x', pady=5)
             return frame
@@ -155,7 +173,9 @@ class Operator_Node(Node):
         self.init_labels()
 
     def update_labels(self):
-
+        '''
+        Update every value of every field based on the current state.
+        '''
         def color(val):
             return "#c8e6c9" if val else "#ffcdd2"
 
@@ -234,8 +254,11 @@ class Operator_Node(Node):
         self.subscription  # prevent unused variable warning
 
     def state_update_callback(self, msg):
+        '''
+        Called each time the plc's equipmentstate changes
+        '''
         #Testing code
-        self.get_logger().info("[Operator_node]Receinving:"+str(msg.em_mr))
+        #self.get_logger().info("[Operator_node]Receinving:"+str(msg.em_mr))
         self.state=deepcopy(msg)
         self.update_labels()
 

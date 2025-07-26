@@ -26,6 +26,9 @@ from prometheus_req_interfaces.srv import CallFunctionBlock
 from prometheus_req_py.structures import ScrewSlot_ctype,EquipmentStatus_ctype,PLC_STRING_40
 
 class pyADS_node(Node):
+    """
+    A pyADS node is responsible for establishing and mantaining the connection with the PLC using the pyADS library.
+    """
 
     def __init__(self):
         super().__init__('pyads_node')
@@ -68,13 +71,19 @@ class pyADS_node(Node):
         test= self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
 
 
-    def block_callback(self,functionBlockName,response):
+    def block_callback(self,functionBlockName: str,response):
+        '''
+        This is the callback function of the CallFunctionBlock service server.
+        '''
         response.result=random.choice([True,False])
         self.get_logger().info(f"Data:{functionBlockName},{response}")
         return response
     
 
     def status_callback(self,notification,data):
+        '''
+        This function is called each time equipementStatus on the plc changes.
+        '''
 
         #WARNING: if you change the type of the notification, you have also to update it in the statusMemory init!
         handle,timestamp,value=self.plc.parse_notification(notification,EquipmentStatus_ctype)
