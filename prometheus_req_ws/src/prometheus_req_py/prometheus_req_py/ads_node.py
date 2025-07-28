@@ -25,13 +25,13 @@ from prometheus_req_interfaces.msg import EquipmentStatus
 from prometheus_req_interfaces.srv import CallFunctionBlock
 from prometheus_req_py.structures import ScrewSlot_ctype,EquipmentStatus_ctype,PLC_STRING_40
 
-class pyADS_node(Node):
+class ADS_Node(Node):
     """
     A pyADS node is responsible for establishing and mantaining the connection with the PLC using the pyADS library.
     """
 
     def __init__(self):
-        super().__init__('pyads_node')
+        super().__init__('ads_node')
         self.init_s_time=time.time_ns()
         #always drop old msg in case of a slowdonw. Keep the newest.
         self.publisher_ = self.create_publisher(EquipmentStatus, 'state', 1)
@@ -45,38 +45,39 @@ class pyADS_node(Node):
         self.declare_parameter("CLIENT_IP","None")
         self.declare_parameter("PLC_IP","None")
         self.declare_parameter("PLC_NET_ID","None")
-        remote_ip = self.get_parameter('remote_ip').value
-        remote_ads = self.get_parameter('remote_ads').value
         CLIENT_NETID = self.get_parameter('CLIENT_NETID').value
         CLIENT_IP = self.get_parameter('CLIENT_IP').value
-
         PLC_IP= self.get_parameter('PLC_IP').value
         PLC_NET_ID = self.get_parameter('PLC_NET_ID').value
 
         pyads.open_port()
         pyads.set_local_address(CLIENT_NETID)
-        #adr=pyads.AmsAddr(CLIENT_NETID,851)
+        #adr=pyads.AmsAddr(CLIENT_NETID,pyads.PORT_TC)
         #pyads.add_route(adr,remote_ip)
 
         #change dave0 based on the credential you are connecting to.
-        pyads.add_route_to_plc(CLIENT_NETID,CLIENT_IP,PLC_IP,"dave0",getpass())
+        temp=pyads.add_route_to_plc(CLIENT_NETID,CLIENT_IP,PLC_IP,"Administrator","1",route_name="pyADS")
         pyads.close_port()
 
-        self.plc= pyads.Connection(remote_ads, pyads.PORT_TC3PLC1, remote_ip)
+        self.plc= pyads.Connection(PLC_NET_ID, pyads.PORT_TC3PLC1, PLC_IP)
         self.plc.open()
+     
         statusMemory=pyads.NotificationAttrib(ctypes.sizeof(EquipmentStatus_ctype))#ctypes.sizeof(EquipmentStatus_ctype)
-        #statusMemory.trans_mode=pyads.ADSTRANS_SERVERCYCLE
-        #statusMemory.nCycleTime=1
 
-        test= self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
+        self.test= self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
 
 
     def block_callback(self,functionBlockName: str,response):
         '''
         This is the callback function of the CallFunctionBlock service server.
         '''
+
         response.result=random.choice([True,False])
         self.get_logger().info(f"Data:{functionBlockName},{response}")
+        #self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.request",1,pyads.PLCTYPE_BOOL)
+
+        self.plc.write_by_name("GVL_ATS.requests.positionerRotate.request",0,pyads.PLCTYPE_BOOL)
+
         return response
     
 
@@ -84,11 +85,10 @@ class pyADS_node(Node):
         '''
         This function is called each time equipementStatus on the plc changes.
         '''
-
         #WARNING: if you change the type of the notification, you have also to update it in the statusMemory init!
         handle,timestamp,value=self.plc.parse_notification(notification,EquipmentStatus_ctype)
         #handle,timestamp,value=self.plc.parse_notification(notification,ctypes.c_ubyte)
-    
+        
         statusUpdate=EquipmentStatus()
         statusUpdate.em_general =  value.emGeneral
         statusUpdate.em_mr = value.emMR
@@ -116,7 +116,7 @@ class pyADS_node(Node):
         statusUpdate.active_state_system_safety_test = value.activeStateSystemSafetyTest.data.decode('utf-8')
 
         self.publisher_.publish(statusUpdate)
-        #self.get_logger().info("[pyADS_node]Sending status update!")
+        #self.get_logger().info("[ADS_Node]Sending status update!")
 
 
     def timer_callback(self):
@@ -124,7 +124,7 @@ class pyADS_node(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    pyads_node =  pyADS_node()
+    pyads_node =  ADS_Node()
     rclpy.spin(pyads_node)
     pyads_node.destroy_node()
     rclpy.shutdown()

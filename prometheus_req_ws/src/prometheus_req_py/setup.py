@@ -21,8 +21,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'pyADS_node = prometheus_req_py.pyADS_node:main',
-            'operator_node = prometheus_req_py.operator_node:main'
+            'ads_node = prometheus_req_py.ads_node:main',
+            'client_node = prometheus_req_py.client_node:main'
         ],
     },
 )

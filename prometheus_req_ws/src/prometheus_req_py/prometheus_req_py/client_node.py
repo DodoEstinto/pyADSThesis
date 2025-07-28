@@ -15,13 +15,12 @@
 import rclpy
 from rclpy.node import Node
 from copy import deepcopy
-from std_msgs.msg import String
 from prometheus_req_interfaces.msg import EquipmentStatus
 from prometheus_req_interfaces.srv import CallFunctionBlock
 import tkinter as tk
 
 
-class Operator_Node(Node):
+class Client_Node(Node):
     '''
     This node is designed to be used directly by a human operator. 
     It provides a simplified interface for monitoring and controlling the system.
@@ -32,10 +31,10 @@ class Operator_Node(Node):
         This function is called when the building block buttons are pressed.
         It sends an async request to the service server.
         '''
-        self.get_logger().info(f"[Operator_node] Calling Block {name}")
+        self.get_logger().info(f"[Client_node] Calling Block {name}")
         self.req.function_block_name=name
         self.client_request_response=self.client.call_async(self.req)
-        self.client_request_response.add_done_callback(self.update_callback)
+        self.client_request_response.add_done_callback(self.update_callback) #TODO
     
     def update_callback(self,data):
         '''
@@ -237,7 +236,7 @@ class Operator_Node(Node):
 
 
     def __init__(self,root):
-        super().__init__('operator_node')
+        super().__init__('client_node')
         self.state=EquipmentStatus()
         self.subscription = self.create_subscription(
             EquipmentStatus,
@@ -258,7 +257,7 @@ class Operator_Node(Node):
         Called each time the plc's equipmentstate changes
         '''
         #Testing code
-        #self.get_logger().info("[Operator_node]Receinving:"+str(msg.em_mr))
+        #self.get_logger().info("[Client_node]Receinving:"+str(msg.em_mr))
         self.state=deepcopy(msg)
         self.update_labels()
 
@@ -267,11 +266,11 @@ class Operator_Node(Node):
 def main(args=None):
     rclpy.init(args=args)
     root=tk.Tk()
-    operator_node = Operator_Node(root)
+    client_node = Client_Node(root)
 
     def update_ros():
-        rclpy.spin_once(operator_node,timeout_sec=0.005)
-        #operator_node.get_logger().info("[Operator_node]Spinning once...")
+        rclpy.spin_once(client_node,timeout_sec=0.005)
+        #client_node.get_logger().info("[Client_node]Spinning once...")
         root.after(1, update_ros)  # Schedule the next call
 
     
@@ -280,8 +279,8 @@ def main(args=None):
   
 
     def on_close():
-        operator_node.get_logger().info("[Operator_node] Shutting down...")
-        operator_node.destroy_node()
+        client_node.get_logger().info("[Client_node] Shutting down...")
+        client_node.destroy_node()
         rclpy.shutdown()
         root.destroy()  # closes the window and ends mainloop
 

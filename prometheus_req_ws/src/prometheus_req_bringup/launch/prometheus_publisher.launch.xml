@@ -1,8 +1,8 @@
 <launch>
-    <node pkg="prometheus_req_py" exec="operator_node" name="operator_node">
+    <node pkg="prometheus_req_py" exec="client_node" name="client_node">
     </node>
-    <node pkg="prometheus_req_py" exec="pyADS_node" name="pyADS_node">
-        <param from="$(find-pkg-share prometheus_req_bringup)/config/pyads_node_config.yaml" />
+    <node pkg="prometheus_req_py" exec="ads_node" name="ads_node">
+        <param from="$(find-pkg-share prometheus_req_bringup)/config/ads_node_config.yaml" />
     </node>
     
 </launch>
