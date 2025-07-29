@@ -34,7 +34,7 @@ class Client_Node(Node):
         self.get_logger().info(f"[Client_node] Calling Block {name}")
         self.req.function_block_name=name
         self.client_request_response=self.client.call_async(self.req)
-        self.client_request_response.add_done_callback(self.update_callback) #TODO
+        self.client_request_response.add_done_callback(self.update_callback)
     
     def update_callback(self,data):
         '''
@@ -123,17 +123,12 @@ class Client_Node(Node):
         self.screw_text.insert('1.0', "Waiting for data...\n")
         self.screw_text.configure(state='disabled')
 
-        # --- Section 4: States ---
+        # --- Section 4: States (as a text box like ScrewBay) ---
         states_frame = make_section(content_frame, "States")
-        state_fields = [
-            'active_state_fsm_string',
-            'active_state_mr_fsm_string',
-            'active_state_sr_fsm_string',
-            'active_state_conveyor_string',
-            'active_state_system_safety_test'
-        ]
-        for i, field in enumerate(state_fields):
-            add_label(states_frame, field, i)
+        self.states_text = tk.Text(states_frame, height=10, width=50, font=("Courier", 10))
+        self.states_text.pack()
+        self.states_text.insert('1.0', "Waiting for state data...\n")
+        self.states_text.configure(state='disabled')
 
         # --- Button column: "Calling Block" ---
         button_header = tk.Label(button_frame, text="Blocks", font=header_font)
@@ -180,27 +175,42 @@ class Client_Node(Node):
 
         # Update checks and positions
         all_fields = [
-            'em_general', 'em_mr', 'em_sr', 'tem_sens_ok', 'air_press_ok',
-            'em_laser_scanner', 'automatic_mode', 'mgse_to_conveyor',
-            'trolley_in_bay', 'side_2_robot', 'positioner_is_up',
-            'positioner_is_down', 'pallet_is_in_wrk_pos', 'pallet_is_in_entry_pos',
-            'rotary_aligned', 'holder_correction_done'
+            'em_general', 
+            'em_mr', 
+            'em_sr', 
+            'tem_sens_ok', 
+            'air_press_ok',
+            'em_laser_scanner', 
+            'automatic_mode', 
+            'mgse_to_conveyor',
+            'trolley_in_bay', 
+            'side_2_robot', 
+            'positioner_is_up',
+            'positioner_is_down', 
+            'pallet_is_in_wrk_pos', 
+            'pallet_is_in_entry_pos',
+            'rotary_aligned', 
+            'holder_correction_done'
         ]
         for field in all_fields:
             val = getattr(self.state, field)
             bg = color(val) if isinstance(val, bool) else "#ddd"
             self.labels[field].config(text=str(val), bg=bg)
 
-        # Update FSM state strings
-        for field in [
+        # --- Update States Text Box (like ScrewBay) ---
+        self.states_text.configure(state='normal')
+        self.states_text.delete('1.0', tk.END)
+        state_field=[
             'active_state_fsm_string',
             'active_state_mr_fsm_string',
             'active_state_sr_fsm_string',
             'active_state_conveyor_string',
             'active_state_system_safety_test'
-        ]:
+        ]
+        for field in state_field:
             val = getattr(self.state, field)
-            self.labels[field].config(text=val, bg="#eee")
+            self.states_text.insert(tk.END, f"{field}: {val}\n")
+        self.states_text.configure(state='disabled')
 
         # Update ScrewBay Text Box
         self.screw_text.configure(state='normal')
@@ -223,7 +233,7 @@ class Client_Node(Node):
             if(self.client_request_response.done()):
                 try:
                     response = self.client_request_response.result()
-                    msg = f"[Success! Message: {response.result}"
+                    msg = f"[{response.result}. Message: {response.msg}"
                 except Exception as e:
                     msg = f"Service call failed: {e}"
                 self.client_request_response=None
@@ -257,8 +267,9 @@ class Client_Node(Node):
         Called each time the plc's equipmentstate changes
         '''
         #Testing code
-        #self.get_logger().info("[Client_node]Receinving:"+str(msg.em_mr))
+        self.get_logger().info("[Client_node]Receinving:"+str(msg.active_state_fsm_string))
         self.state=deepcopy(msg)
+        self.get_logger().info("[Client_node]Updating:"+str(self.state.active_state_fsm_string))
         self.update_labels()
 
 

@@ -16,15 +16,17 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 from getpass import getpass
-import pyads
+from time import sleep
+import pyads # pyright: ignore[reportMissingImports]
 import random
 import time
 import ctypes
 
-from prometheus_req_interfaces.msg import EquipmentStatus
+
+from prometheus_req_interfaces.msg import EquipmentStatus,ScrewSlot
 from prometheus_req_interfaces.srv import CallFunctionBlock
 from prometheus_req_py.structures import ScrewSlot_ctype,EquipmentStatus_ctype,PLC_STRING_40
-
+from prometheus_req_py.utils import req_state,get_req_type,get_req_state_result_msg
 class ADS_Node(Node):
     """
     A pyADS node is responsible for establishing and mantaining the connection with the PLC using the pyADS library.
@@ -36,7 +38,7 @@ class ADS_Node(Node):
         #always drop old msg in case of a slowdonw. Keep the newest.
         self.publisher_ = self.create_publisher(EquipmentStatus, 'state', 1)
         timer_period = 0.001  # seconds
-        self.client= self.create_service(CallFunctionBlock,"CallFunctionBlock",self.block_callback)
+        self.server= self.create_service(CallFunctionBlock,"CallFunctionBlock",self.block_callback)
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
         self.declare_parameter("remote_ip","None")
@@ -67,21 +69,69 @@ class ADS_Node(Node):
         self.test= self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
 
 
-    def block_callback(self,functionBlockName: str,response):
+    def block_callback(self,functionBlockName: str,response: CallFunctionBlock.Response): #TODO: Controllare se è tipo di response è corretto.
         '''
         This is the callback function of the CallFunctionBlock service server.
         '''
-
-        response.result=random.choice([True,False])
+        functionBlockName="positionerRotate" #avoid the wrong button TODO: remove this. DEBUG ONLY
         self.get_logger().info(f"Data:{functionBlockName},{response}")
-        #self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.request",1,pyads.PLCTYPE_BOOL)
 
-        self.plc.write_by_name("GVL_ATS.requests.positionerRotate.request",0,pyads.PLCTYPE_BOOL)
+        actualState=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT)
+        #self.get_logger().info(f"@@@STATE:{actualState}")
 
+        if(actualState==req_state.ST_READY):
+            self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.request",1,pyads.PLCTYPE_BOOL)
+            while(self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT) in (req_state.ST_EXECUTING,
+                                                                                                             req_state.ST_EXECUTING_2,
+                                                                                                             req_state.ST_EXECUTING_3,
+                                                                                                             req_state.ST_EXECUTING_4)):
+                pass
+            while(True): #TODO: blocca il sub? testare. #serve ancora con il while sopra? Testare!
+                busy=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.Busy",pyads.PLCTYPE_BOOL)
+                if(not busy):
+                    break
+                match get_req_type(functionBlockName):
+                    case 1:#simple
+                        return self.manageFunctionType1()
+                    case 2:#pending
+                        return self.manageFunctionType2()
+                    case 3:#photo?
+                        return self.manageFunctionType3()
+                '''
+                response.state=self.plc.read_by_name("GVL_ATS.requests.positionerRotate.State",pyads.PLCTYPE_INT)
+                if(response.state== 0):
+                    response.result=True
+                    response.msg="Success! Robot Ready!"
+                    break
+                elif(response.state==40):
+                    response.result=True
+                    response.msg="Waiting for the client to take action..."
+                    break
+                elif(response.state==-20):
+                    response.result=False
+                    response.msg="Stopped!"
+                    break
+                elif(response.state==-30):
+                    response.result=False
+                    response.msg="ERROR!"
+                    break
+                elif(response.state==-40):
+                    response.result=False
+                    response.msg="ERROR CHECK!"      
+                    break  
+                '''
         return response
     
+    def manageFunctionType1(state:int,response):
+        response.result,response.msg=get_req_state_result_msg(state)
+        return response
+    
+    def manageFunctionType2():
+        pass
+    def manageFunctionType3():
+        pass
 
-    def status_callback(self,notification,data):
+    def status_callback(self,notification,_): #_=data
         '''
         This function is called each time equipementStatus on the plc changes.
         '''
@@ -108,7 +158,23 @@ class ADS_Node(Node):
         statusUpdate.holder_correction_done = value.holderCorrectionDone
         
         #statusUpdate.screw_bay = value.screwBay
-        
+        #self.get_logger().info(f"[ADS_Node] ScrewBay:{statusUpdate.screw_bay}")
+
+    
+        #TODO:TEST THIS
+        statusUpdate.screw_bay = []
+
+        for i in range(6):
+            src = value.screwBay[i]
+            slot = ScrewSlot()
+            slot.max_idx_x = src.MAX_IDX_X
+            slot.max_idx_y = src.MAX_IDX_Y
+            slot.next_idx_x = src.nextIdxX
+            slot.next_idx_y = src.nextIdxY
+            statusUpdate.screw_bay.append(slot)
+            
+
+        self.get_logger().info("[ADS_node]Sending:"+str(value.activeStateFSMString.data)+"@@@"+value.activeStateFSMString.data.decode('utf-8'))
         statusUpdate.active_state_fsm_string = value.activeStateFSMString.data.decode('utf-8')
         statusUpdate.active_state_mr_fsm_string = value.activeStateMRFSMString.data.decode('utf-8')
         statusUpdate.active_state_sr_fsm_string = value.activeStateSRFSMString.data.decode('utf-8')

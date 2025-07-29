@@ -14,6 +14,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ScrewSlot.msg"
   "msg/EquipmentStatus.msg"
   "srv/CallFunctionBlock.srv"
+  "action/CallFunctionBlock.action"
 )
 
 ament_export_dependencies(rosidl_default_runtime)
