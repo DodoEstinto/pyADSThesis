@@ -58,7 +58,7 @@ class Client_Node(Node):
     def goal_result_callback(self,future):
         self.get_logger().info(f"[CLIENT NODE] Action result:Entering")
         self.functionBlockResult=future.result().result.result
-        self.functionBlockState=future.result().result.state #???
+        self.functionBlockState=future.result().result.state
         self.functionBlockMsg=future.result().result.msg
         self.update_labels()
         self.get_logger().info(f"[CLIENT NODE] Action result:{self.functionBlockState},{self.functionBlockMsg}")

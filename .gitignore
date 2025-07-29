@@ -4,3 +4,4 @@ prometheus_req_ws/build/
 prometheus_req_ws/bin/
 prometheus_req_ws/lib/
 prometheus_req_ws/install/
+prometheus_req_ws/setupLAN.bash

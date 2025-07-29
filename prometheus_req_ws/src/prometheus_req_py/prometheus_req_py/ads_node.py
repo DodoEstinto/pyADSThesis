@@ -32,7 +32,7 @@ class ADS_Node(Node):
 
     def __init__(self):
         super().__init__('ads_node')
-        s#elf.init_s_time=time.time_ns()
+        #self.init_s_time=time.time_ns()
         #always drop old msg in case of a slowdonw. Keep the newest.
         self.publisher_ = self.create_publisher(EquipmentStatus, 'state', 1)
         timer_period = 0.001  # seconds
