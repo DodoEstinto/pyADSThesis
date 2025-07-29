@@ -55,7 +55,8 @@ class ADS_Node(Node):
         pyads.set_local_address(CLIENT_NETID)
 
         #change  based on the credential you are connecting to.
-        temp=pyads.add_route_to_plc(CLIENT_NETID,CLIENT_IP,PLC_IP,"Administrator","1",route_name="pyADS")
+        if(False):
+            temp=pyads.add_route_to_plc(CLIENT_NETID,CLIENT_IP,PLC_IP,"Administrator","1",route_name="pyADS")
         pyads.close_port()
 
         self.plc= pyads.Connection(PLC_NET_ID, pyads.PORT_TC3PLC1, PLC_IP)
@@ -64,6 +65,7 @@ class ADS_Node(Node):
         statusMemory=pyads.NotificationAttrib(ctypes.sizeof(EquipmentStatus_ctype))#ctypes.sizeof(EquipmentStatus_ctype)
 
         self.test= self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
+
 
     def block_execute_callback(self,goalHandler):
         functionBlockName="positionerRotate"
@@ -155,6 +157,8 @@ class ADS_Node(Node):
         statusUpdate.tem_sens_ok = value.temSensOk
         statusUpdate.air_press_ok = value.airPressOk
         statusUpdate.em_laser_scanner = value.emLaserScanner
+        statusUpdate.em_laser_scanner2 = value.emLaserScanner2 
+        statusUpdate.em_laser_scanner3 = value.emLaserScanner3 
         statusUpdate.automatic_mode = value.automaticMode
         statusUpdate.mgse_to_conveyor = value.mgseToConveyor
         statusUpdate.trolley_in_bay = value.trolleyInBay
@@ -165,14 +169,17 @@ class ADS_Node(Node):
         statusUpdate.pallet_is_in_entry_pos = value.palletIsInEntryPos
         statusUpdate.rotary_aligned = value.rotaryAligned
         statusUpdate.holder_correction_done = value.holderCorrectionDone
-        
+
         #statusUpdate.screw_bay = value.screwBay
         #self.get_logger().info(f"[ADS_Node] ScrewBay:{statusUpdate.screw_bay}")
+        temp=self.plc.read_by_name('GVL_ATS.equipmentState',EquipmentStatus_ctype)
+        #self.get_logger().info(f"Values:{temp.emGeneral},{temp.emMR},{temp.temSensOk},{temp.airPressOk},{temp.emLaserScanner},{temp.emLaserScanner2},{temp.emLaserScanner3},{temp.automaticMode}")
+        #self.get_logger().info(f"Values2:{temp.mgseToConveyor},{temp.trolleyInBay},{temp.side2Robot}")
 
     
         #TODO:TEST THIS
         statusUpdate.screw_bay = []
-
+        self.get_logger().info(f"[ADS_node]Reading Screw:{self.plc.read_by_name('GVL_ATS.equipmentState.screwBay[1]',ScrewSlot_ctype).nextIdxY}")
         for i in range(6):
             src = value.screwBay[i]
             slot = ScrewSlot()
@@ -183,12 +190,16 @@ class ADS_Node(Node):
             statusUpdate.screw_bay.append(slot)
             
 
-        #self.get_logger().info("[ADS_node]Sending:"+str(value.activeStateFSMString.data)+"@@@"+value.activeStateFSMString.data.decode('utf-8'))
-        statusUpdate.active_state_fsm_string = value.activeStateFSMString.data.decode('utf-8')
-        statusUpdate.active_state_mr_fsm_string = value.activeStateMRFSMString.data.decode('utf-8')
-        statusUpdate.active_state_sr_fsm_string = value.activeStateSRFSMString.data.decode('utf-8')
-        statusUpdate.active_state_conveyor_string = value.activeStateConveyorString.data.decode('utf-8')
-        statusUpdate.active_state_system_safety_test = value.activeStateSystemSafetyTest.data.decode('utf-8')
+        #self.get_logger().info(f"[ADS_node]Sending1:{type(value.activeStateFSMString)},{value.activeStateFSMString}")
+        #self.get_logger().info(f"[ADS_node]Sending2:{self.plc.read_by_name('GVL_ATS.equipmentState.activeStateFSMString',pyads.PLCTYPE_STRING)}")
+
+
+        statusUpdate.active_state_fsm_string = str(value.activeStateFSMString)
+        statusUpdate.active_state_mr_fsm_string = str(value.activeStateMRFSMString)
+        statusUpdate.active_state_sr_fsm_string = str(value.activeStateSRFSMString)
+        statusUpdate.active_state_conveyor_string = str(value.activeStateConveyorString)
+        statusUpdate.active_state_system_safety_test = str(value.activeStateSystemSafetyTest)
+ 
 
         self.publisher_.publish(statusUpdate)
         #self.get_logger().info("[ADS_Node]Sending status update!")

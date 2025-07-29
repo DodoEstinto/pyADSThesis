@@ -1,4 +1,5 @@
 import ctypes
+from pyads import PLCTYPE_STRING
 
 class ScrewSlot_ctype(ctypes.Structure):
     _pack_ = 1
@@ -25,10 +26,13 @@ class EquipmentStatus_ctype(ctypes.Structure):
         ("temSensOk", ctypes.c_bool),
         ("airPressOk", ctypes.c_bool),
         ("emLaserScanner", ctypes.c_bool),
+        ("emLaserScanner2", ctypes.c_bool),
+        ("emLaserScanner3", ctypes.c_bool),
+        ("emLaserScanner4", ctypes.c_bool),
         ("automaticMode", ctypes.c_bool),
         ("mgseToConveyor", ctypes.c_bool),
         ("trolleyInBay", ctypes.c_bool),
-        ("side2Robot", ctypes.c_uint16),
+        ("side2Robot", ctypes.c_int16),
         ("positionerIsUp", ctypes.c_bool),
         ("positionerIsDown", ctypes.c_bool),
         ("palletIsInWrkPos", ctypes.c_bool),
@@ -36,9 +40,9 @@ class EquipmentStatus_ctype(ctypes.Structure):
         ("rotaryAligned", ctypes.c_bool),
         ("holderCorrectionDone", ctypes.c_bool),
         ("screwBay", ScrewSlot_ctype * 6),
-        ("activeStateFSMString", PLC_STRING_40),
-        ("activeStateMRFSMString", PLC_STRING_40),
-        ("activeStateSRFSMString", PLC_STRING_40),
-        ("activeStateConveyorString", PLC_STRING_40),
-        ("activeStateSystemSafetyTest", PLC_STRING_40),
+        ("activeStateFSMString", ctypes.c_char * 41), 
+        ("activeStateMRFSMString", ctypes.c_char * 41),
+        ("activeStateSRFSMString", ctypes.c_char * 41),
+        ("activeStateConveyorString", ctypes.c_char * 41),
+        ("activeStateSystemSafetyTest", ctypes.c_char * 41),
     ]

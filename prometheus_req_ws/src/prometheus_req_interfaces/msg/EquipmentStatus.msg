@@ -4,10 +4,12 @@ bool em_sr
 bool tem_sens_ok
 bool air_press_ok
 bool em_laser_scanner
+bool em_laser_scanner2
+bool em_laser_scanner3
 bool automatic_mode
 bool mgse_to_conveyor
 bool trolley_in_bay
-uint8 side_2_robot
+int16 side_2_robot
 bool positioner_is_up
 bool positioner_is_down
 bool pallet_is_in_wrk_pos

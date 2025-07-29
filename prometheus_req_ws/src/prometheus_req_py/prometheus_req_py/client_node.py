@@ -130,9 +130,15 @@ class Client_Node(Node):
         # --- Section 1: Checks ---
         checks_frame = make_section(content_frame, "Checks")
         checks_fields = [
-            'em_general', 'em_mr', 'em_sr',
-            'tem_sens_ok', 'air_press_ok',
-            'em_laser_scanner', 'automatic_mode'
+            'em_general', 
+            'em_mr', 
+            'em_sr',
+            'tem_sens_ok', 
+            'air_press_ok',
+            'em_laser_scanner', 
+            'em_laser_scanner2',
+            'em_laser_scanner3',
+            'automatic_mode'
         ]
         for i, field in enumerate(checks_fields):
             add_label(checks_frame, field, i)
@@ -213,6 +219,8 @@ class Client_Node(Node):
             'tem_sens_ok', 
             'air_press_ok',
             'em_laser_scanner', 
+            'em_laser_scanner2',
+            'em_laser_scanner3',
             'automatic_mode', 
             'mgse_to_conveyor',
             'trolley_in_bay', 
@@ -247,7 +255,7 @@ class Client_Node(Node):
         # Update ScrewBay Text Box
         self.screw_text.configure(state='normal')
         self.screw_text.delete('1.0', tk.END)
-        for i, slot in enumerate(self.state.screw_bay):
+        for i, slot in enumerate(self.state.screw_bay,1):
             self.screw_text.insert(tk.END, f"ScrewBay[{i}]: ")
             self.screw_text.insert(tk.END, f"max=({slot.max_idx_x},{slot.max_idx_y}) ")
             self.screw_text.insert(tk.END, f"next=({slot.next_idx_x},{slot.next_idx_y})\n")
@@ -304,7 +312,7 @@ class Client_Node(Node):
         #Testing code
         #self.get_logger().info("[Client_node]Receinving:"+str(msg.active_state_fsm_string))
         self.state=deepcopy(msg)
-        #self.get_logger().info("[Client_node]Updating:"+str(self.state.active_state_fsm_string))
+        self.get_logger().info("[Client_node]Updating:"+str(self.state.em_general))
         self.update_labels()
 
 
