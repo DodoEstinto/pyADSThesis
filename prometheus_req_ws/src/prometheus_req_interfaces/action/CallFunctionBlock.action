@@ -1,8 +1,8 @@
 string function_block_name
 ---
-int16 state
-string msg
----
 bool result
 int16 state
 string msg
+---
+string msg
+

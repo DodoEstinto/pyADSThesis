@@ -1,6 +1,6 @@
 
-from enum import Enum
-class req_state(Enum):
+from enum import IntEnum
+class req_state(IntEnum):
     ST_ERROR_CHECK = -40
     ST_ERROR = -30
     ST_STOP = -20,
@@ -19,8 +19,14 @@ def get_req_state_result_msg(state: int) -> tuple[bool, str]:
         40:    (True,  "Waiting for the client to take action..."),
         -20:   (False, "Stopped!"),
         -30:   (False, "ERROR!"),
-        -40:   (False, "ERROR CHECK!")
+        -40:   (False, "ERROR CHECK!"),
+        20:    (False, "Still running!"),
+        100:    (False, "Still running!"),
+        110:    (False, "Still running!"),
+        120:    (False, "Still running!"),
+        
     }
+    return state_mapping.get(state,(False,"Invalid State!"))
 
 def get_req_type(val:str) -> int:
     block_mapping = {

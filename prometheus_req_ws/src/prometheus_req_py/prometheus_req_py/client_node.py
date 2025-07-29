@@ -14,9 +14,10 @@
 
 import rclpy
 from rclpy.node import Node
+from rclpy.action import ActionClient
 from copy import deepcopy
 from prometheus_req_interfaces.msg import EquipmentStatus
-from prometheus_req_interfaces.srv import CallFunctionBlock
+from prometheus_req_interfaces.action import CallFunctionBlock
 import tkinter as tk
 
 
@@ -31,11 +32,42 @@ class Client_Node(Node):
         This function is called when the building block buttons are pressed.
         It sends an async request to the service server.
         '''
+        self.functionBlockCalled=True
         self.get_logger().info(f"[Client_node] Calling Block {name}")
         self.req.function_block_name=name
-        self.client_request_response=self.client.call_async(self.req)
-        self.client_request_response.add_done_callback(self.update_callback)
-    
+        self.send_goal_future=self.client.send_goal_async(self.req)
+        self.send_goal_future.add_done_callback(self.goal_response_callback)
+
+    def goal_response_callback(self,future):
+        goalHandler=future.result()
+        self.get_logger().info(f"[CLIENT NODE] Action response:Entering")
+
+        if not goalHandler.accepted:
+            self.get_logger().info(f"[CLIENT NODE] Action response:Not accepted")
+
+            self.functionBlockStatus="Command not accepted"
+            self.update_labels()
+            self.functionBlockCalled=False
+            return
+        
+        self.get_logger().info(f"[CLIENT NODE] Action response: Accepted")
+        self.functionBlockStatus="Command accepted"
+        self.send_goal_future= goalHandler.get_result_async()
+        self.send_goal_future.add_done_callback(self.goal_result_callback)
+
+    def goal_result_callback(self,future):
+        self.get_logger().info(f"[CLIENT NODE] Action result:Entering")
+        self.functionBlockResult=future.result().result.result
+        self.functionBlockState=future.result().result.state #???
+        self.functionBlockMsg=future.result().result.msg
+        self.update_labels()
+        self.get_logger().info(f"[CLIENT NODE] Action result:{self.functionBlockState},{self.functionBlockMsg}")
+        self.functionBlockCalled=False
+
+    def goal_feedback_callback(self,msg):
+        self.functionBlockMsg=msg.msg
+        pass
+
     def update_callback(self,data):
         '''
         This function is called when the service client receive a response.
@@ -221,22 +253,21 @@ class Client_Node(Node):
             self.screw_text.insert(tk.END, f"next=({slot.next_idx_x},{slot.next_idx_y})\n")
         self.screw_text.configure(state='disabled')
         
-        if self.client_request_response==None:
-            self.get_logger().info(f"client_request_response:N/A")
-        else:
-            self.get_logger().info(f"client_request_response:{self.client_request_response.result().result}")
+        #if self.client_request_response==None:
+        #    self.get_logger().info(f"client_request_response:N/A")
+        #else:
+            #self.get_logger().info(f"client_request_response:{self.client_request_response.result().result}")
 
         
-        if(self.client_request_response!=None):
+        if(self.functionBlockCalled):
             self.response_text.configure(state='normal')
             self.response_text.delete('1.0', tk.END)
-            if(self.client_request_response.done()):
-                try:
-                    response = self.client_request_response.result()
-                    msg = f"[{response.result}. Message: {response.msg}"
-                except Exception as e:
-                    msg = f"Service call failed: {e}"
-                self.client_request_response=None
+            if(self.functionBlockDone):
+                    if(self.functionBLockResult):
+                        msg = f"[Success!] Message: {self.functionBlockMsg}"
+                    else:
+                        msg = f"[Fail] Message: {self.functionBlockMsg}"
+
             else:
                 msg="Waiting for a response..."
             self.response_text.insert("1.0",msg)
@@ -253,13 +284,17 @@ class Client_Node(Node):
             'state',
             self.state_update_callback,
             1)
-        self.client_request_response=None
+        self.functionBlockCalled=False
+        self.functionBlockDone=False
+        self.functionBlockState="N/A"
+        self.functionBlockMsg="N/A"
+        self.functionBlockResult=False
         self.init_GUI(root)
-        self.client=self.create_client(CallFunctionBlock,"CallFunctionBlock")
-        while not self.client.wait_for_service(timeout_sec=1):
+        self.client=ActionClient(self,CallFunctionBlock,"CallFunctionBlock")
+        while not self.client.wait_for_server(timeout_sec=1):
             #self.get_logger().info('service not available, waiting again...')
             pass
-        self.req=CallFunctionBlock.Request()
+        self.req=CallFunctionBlock.Goal()
         self.subscription  # prevent unused variable warning
 
     def state_update_callback(self, msg):
@@ -267,9 +302,9 @@ class Client_Node(Node):
         Called each time the plc's equipmentstate changes
         '''
         #Testing code
-        self.get_logger().info("[Client_node]Receinving:"+str(msg.active_state_fsm_string))
+        #self.get_logger().info("[Client_node]Receinving:"+str(msg.active_state_fsm_string))
         self.state=deepcopy(msg)
-        self.get_logger().info("[Client_node]Updating:"+str(self.state.active_state_fsm_string))
+        #self.get_logger().info("[Client_node]Updating:"+str(self.state.active_state_fsm_string))
         self.update_labels()
 
 
