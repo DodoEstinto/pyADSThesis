@@ -32,13 +32,14 @@ class ADS_Node(Node):
 
     def __init__(self):
         super().__init__('ads_node')
-        self.init_s_time=time.time_ns()
+        s#elf.init_s_time=time.time_ns()
         #always drop old msg in case of a slowdonw. Keep the newest.
         self.publisher_ = self.create_publisher(EquipmentStatus, 'state', 1)
         timer_period = 0.001  # seconds
         self.actionServer= rclpyActionServer(self,CallFunctionBlock,"CallFunctionBlock",self.block_execute_callback)
         self.timer = self.create_timer(timer_period, self.timer_callback)
-
+        self.lastTime=time.time
+        self.actionTimerDelay=5 #secondss
         self.declare_parameter("remote_ip","None")
         self.declare_parameter("remote_ads","None")
         self.declare_parameter("CLIENT_NETID","None")
@@ -89,13 +90,18 @@ class ADS_Node(Node):
                                                                                                              req_state.ST_EXECUTING_2,
                                                                                                              req_state.ST_EXECUTING_3,
                                                                                                              req_state.ST_EXECUTING_4)):
-                feedback_msg.msg="Executing..."
-                goalHandler.publish_feedback(feedback_msg)
+                if(time.time()-self.lastTime>self.actionTimerDelay):
+                    self.lastTime=time.time()
+                    feedback_msg.msg="Executing..."
+                    goalHandler.publish_feedback(feedback_msg)
 
             result=CallFunctionBlock.Result()
             while(self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.Busy",pyads.PLCTYPE_BOOL)): #TODO: serve ancora con il while sopra? Testare!
-                feedback_msg.msg="Busy! Waiting..."
-                goalHandler.publish_feedback(feedback_msg)
+                if(time.time()-self.lastTime>self.actionTimerDelay):
+                    self.lastTime=time.time()
+                    feedback_msg.msg="Busy! Waiting..."
+                    goalHandler.publish_feedback(feedback_msg)
+                
 
             actualState=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT)
             feedback_msg.msg="Handling the building block..."
@@ -106,9 +112,16 @@ class ADS_Node(Node):
                         result.state=actualState
                         
                 case 2:#pending
+                        
+                        while(self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT) ==req_state.ST_REQ_PENDING):
+                            if(time.time()-self.lastTime>self.actionTimerDelay):
+                                self.lastTime=time.time()
+                                feedback_msg.msg="Waiting for the client to take action..."
+                                goalHandler.publish_feedback(feedback_msg)
+        
                         #self.manageFunctionType2()
                         pass
-                case 3:#photo?
+                case 3:#error check?
                         #self.manageFunctionType3()
                         pass
             
