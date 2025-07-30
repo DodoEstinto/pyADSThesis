@@ -83,8 +83,8 @@ class ADS_Node(Node):
         statusMemory=pyads.NotificationAttrib(ctypes.sizeof(EquipmentStatus_ctype))#ctypes.sizeof(EquipmentStatus_ctype)
 
         self.test= self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
-        self.plc.write_by_name("GVL_ATS.requests.positionerRotate.errorAck",1,pyads.PLCTYPE_BOOL)
-        self.plc.write_by_name("GVL_ATS.requests.positionerRotate.errorAck",0,pyads.PLCTYPE_BOOL)
+        #self.plc.write_by_name("GVL_ATS.requests.positionerRotate.errorAck",1,pyads.PLCTYPE_BOOL)
+        #self.plc.write_by_name("GVL_ATS.requests.positionerRotate.errorAck",0,pyads.PLCTYPE_BOOL)
 
 
 
@@ -121,7 +121,6 @@ class ADS_Node(Node):
         feedback_msg.msg=get_req_state_msg(actualState)
         if(actualState == req_state.ST_READY):
             self.get_logger().info(f"[DEBUG]Ready")
-            #TODO: after this,in case you use more than one client, you should check again the state. 
             check,msg=self.runChecks(functionBlockName)
             if(not check):
                 feedback_msg.msg=msg
@@ -166,8 +165,7 @@ class ADS_Node(Node):
                         result.msg,result.state=self.managePositionerRotate(goalHandler)
                         #result.state=actualState
                 case "loadTray":
-                        result.msg=self.manageLoadTray(actualState,goalHandler)
-                        result.state=actualState
+                        result.msg,result.state=self.manageLoadTray(actualState,goalHandler)
                 case "depositTray":
                         result.msg=self.manageDepositTray(actualState)
                         result.state=actualState
@@ -219,7 +217,7 @@ class ADS_Node(Node):
         msg=None
         if(side2Robot != 0):
             msg="Tray not in the right position! Please move the tray to the right position before calling this function block."
-        return (side2Robot == 1,msg)
+        return (side2Robot == 0,msg)
 
     def error_check_callback(self, _):
         """
@@ -251,15 +249,18 @@ class ADS_Node(Node):
 
             self.error_check("PositionerRotate Error Check",goalHandler)
             self.plc.write_by_name("GVL_ATS.requests.positionerRotate.errorAck",1,pyads.PLCTYPE_BOOL)
-            self.get_logger().info("[ADS_Node]ACK sent for Positioner Rotate Error Check!")
+            self.get_logger().info("[ADS_Node]ACK sent for Positioner Rotate Error Check!") 
+            while(state==req_state.ST_ERROR_CHECK):
+                state=self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.State",pyads.PLCTYPE_INT)
+            msg="Error check resolved, machine is ready again"
+        else:
+            msg=get_req_state_msg(state)
 
-        while(state==req_state.ST_ERROR_CHECK):
-            state=self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.State",pyads.PLCTYPE_INT)
 
 
-        return "Error check solved, now ready",state
+        return msg,state
     
-    def manageLoadTray(self,state:int,goalHandler)-> str:
+    def manageLoadTray(self,goalHandler)-> str:
         funcState=self.plc.read_by_name("GVL_ATS.requests.loadTray.State",pyads.PLCTYPE_INT)
         self.get_logger().info(f"funcState:{funcState}")
 
@@ -268,8 +269,13 @@ class ADS_Node(Node):
 
             self.error_check("Load Tray Error Check",goalHandler)
             self.plc.write_by_name("GVL_ATS.requests.loadTray.errorAck",1,pyads.PLCTYPE_BOOL)
+            while(state==req_state.ST_ERROR_CHECK):
+                state=self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.State",pyads.PLCTYPE_INT)
+            msg="Error check resolved, machine is ready again"
+        else:
+            msg=get_req_state_msg(funcState)
 
-        return get_req_state_msg(state)
+        return msg,state
     
     def manageDepositTray(self,state:int):
         return get_req_state_msg(state)
@@ -340,6 +346,7 @@ class ADS_Node(Node):
             statusUpdate=self.lastStatus
         self.publisher_.publish(statusUpdate)
         self.get_logger().debug(f"[ADS_Node]Sending periodic status update!")
+        #rclpy.spin_once(self,timeout_sec=0.01)
         
 
 def main(args=None):

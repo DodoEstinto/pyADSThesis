@@ -43,10 +43,11 @@ class Client_Node(Node):
             self.req.function_block_name=name
             self.send_goal_future=self.client.send_goal_async(self.req,feedback_callback=self.goal_feedback_callback)
             self.send_goal_future.add_done_callback(self.goal_response_callback)
+            self.get_logger().info(f"[Client_node] Done")
         else:
             self.get_logger().info(f"[Client_node] Function Block already called, waiting for response...")
             self.update_response_text("A function Block has been already called, waiting for its response...", isMsg=False)
-            return
+        
 
     def goal_response_callback(self,future):
         goalHandler=future.result()
