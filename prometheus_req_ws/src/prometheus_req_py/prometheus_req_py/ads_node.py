@@ -83,8 +83,8 @@ class ADS_Node(Node):
         statusMemory=pyads.NotificationAttrib(ctypes.sizeof(EquipmentStatus_ctype))#ctypes.sizeof(EquipmentStatus_ctype)
 
         self.test= self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
-        #self.plc.write_by_name("GVL_ATS.requests.positionerRotate.errorAck",1,pyads.PLCTYPE_BOOL)
-        #self.plc.write_by_name("GVL_ATS.requests.positionerRotate.errorAck",0,pyads.PLCTYPE_BOOL)
+        self.plc.write_by_name("GVL_ATS.requests.loadTray.errorAck",1,pyads.PLCTYPE_BOOL)
+        self.plc.write_by_name("GVL_ATS.requests.loadTray.errorAck",0,pyads.PLCTYPE_BOOL)
 
 
 
@@ -165,7 +165,7 @@ class ADS_Node(Node):
                         result.msg,result.state=self.managePositionerRotate(goalHandler)
                         #result.state=actualState
                 case "loadTray":
-                        result.msg,result.state=self.manageLoadTray(actualState,goalHandler)
+                        result.msg,result.state=self.manageLoadTray(goalHandler)
                 case "depositTray":
                         result.msg=self.manageDepositTray(actualState)
                         result.state=actualState
@@ -238,25 +238,23 @@ class ADS_Node(Node):
             rclpy.spin_once(self,timeout_sec=0.01)
             
         self.get_logger().info("Uscito!")
-        self.errorCheckEvent=True
+        self.errorCheckEvent=False
 
     def managePositionerRotate(self,goalHandler)->str:
         funcState=self.plc.read_by_name("GVL_ATS.requests.positionerRotate.State",pyads.PLCTYPE_INT)
         state=req_state.ST_ERROR_CHECK
         self.get_logger().info(f"funcState:{funcState}")
-        if(funcState == req_state.ST_ERROR_CHECK):
+        if(funcState == int(req_state.ST_ERROR_CHECK)):
             self.get_logger().info("[ADS_Node]Checking Positioner Rotate...")
 
             self.error_check("PositionerRotate Error Check",goalHandler)
             self.plc.write_by_name("GVL_ATS.requests.positionerRotate.errorAck",1,pyads.PLCTYPE_BOOL)
             self.get_logger().info("[ADS_Node]ACK sent for Positioner Rotate Error Check!") 
-            while(state==req_state.ST_ERROR_CHECK):
+            while(state==int(req_state.ST_ERROR_CHECK)):
                 state=self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.State",pyads.PLCTYPE_INT)
-            msg="Error check resolved, machine is ready again"
+            msg="Error check solved"
         else:
             msg=get_req_state_msg(state)
-
-
 
         return msg,state
     
@@ -269,13 +267,13 @@ class ADS_Node(Node):
 
             self.error_check("Load Tray Error Check",goalHandler)
             self.plc.write_by_name("GVL_ATS.requests.loadTray.errorAck",1,pyads.PLCTYPE_BOOL)
-            while(state==req_state.ST_ERROR_CHECK):
-                state=self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.State",pyads.PLCTYPE_INT)
-            msg="Error check resolved, machine is ready again"
+            while(funcState==req_state.ST_ERROR_CHECK):
+                funcState=self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.state",pyads.PLCTYPE_INT)
+            msg="Error check solved"
         else:
             msg=get_req_state_msg(funcState)
 
-        return msg,state
+        return msg,funcState
     
     def manageDepositTray(self,state:int):
         return get_req_state_msg(state)
