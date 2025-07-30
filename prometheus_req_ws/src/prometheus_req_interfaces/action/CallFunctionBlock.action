@@ -4,5 +4,7 @@ bool result
 int16 state
 string msg
 ---
+bool error_check
 string msg
+
 

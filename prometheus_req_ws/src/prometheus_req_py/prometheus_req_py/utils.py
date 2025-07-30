@@ -1,5 +1,6 @@
 
 from enum import IntEnum
+import tkinter as tk
 class req_state(IntEnum):
     ST_ERROR_CHECK = -40
     ST_ERROR = -30
@@ -13,24 +14,46 @@ class req_state(IntEnum):
     ST_EXECUTING_3=110,
     ST_EXECUTING_4=120
 
-def get_req_state_result_msg(state: int) -> tuple[bool, str]:
+class OkDialog(tk.Toplevel):
+    def __init__(self, parent, title="Message", message=""):
+        super().__init__(parent)
+        self.result = False  
+        self.title(title)
+        self.geometry("300x120")
+        self.resizable(False, False)
+
+        self.label = tk.Label(self, text=message, wraplength=280)
+        self.label.pack(pady=20)
+
+        self.ok_button = tk.Button(self, text="OK", width=10, command=self.on_ok)
+        self.ok_button.pack(pady=(0, 10))
+
+        self.grab_set()     # Make this window modal
+        self.transient(parent)  # Show on top of parent
+        self.wait_window()  # Wait for this window to close
+
+    def on_ok(self):
+        self.result = True
+        self.destroy()
+
+def get_req_state_msg(state: int) -> str:
     state_mapping = {
-        0:     (True,  "Success! Robot Ready!"),
-        40:    (True,  "Waiting for the client to take action..."),
-        -20:   (False, "Stopped!"),
-        -30:   (False, "ERROR!"),
-        -40:   (False, "ERROR CHECK!"),
-        20:    (False, "Still running!"),
-        100:    (False, "Still running!"),
-        110:    (False, "Still running!"),
-        120:    (False, "Still running!"),
+        0:     ("Success! Robot Ready!"),
+        40:    ("Waiting for the client to take action..."),
+        -20:   ("Stopped!"),
+        -30:   ("ERROR!"),
+        -40:   ("ERROR CHECK!"),
+        20:    ("Still running!"),
+        100:    ("Still running!"),
+        110:    ("Still running!"),
+        120:    ("Still running!"),
         
     }
     return state_mapping.get(state,(False,"Invalid State!"))
 
 def get_req_type(val:str) -> int:
     block_mapping = {
-        "loadTray": 0,
+        "loadTray": 3,
         "pickUpTray": 0,
         "depositTray": 0,
         "srHoming": 0,
