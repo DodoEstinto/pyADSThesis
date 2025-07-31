@@ -205,7 +205,7 @@ class ADS_Node(Node):
 
             goalHandler.succeed()
             result.result=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.Done",pyads.PLCTYPE_BOOL)
-            self.get_logger().info("[DEBUG] Goal Finished ")
+            self.get_logger().info(f"[DEBUG] Goal Finished {result.result} with message: {result.msg} and state: {result.state}.| Types: {type(result.result)}, {type(result.msg)}, {type(result.state)}")
             return result
         else:
             self.get_logger().info(f"[DEBUG]Not Ready")
@@ -216,12 +216,12 @@ class ADS_Node(Node):
             return result
     
 
-    def manageParameters(self,req,functionBlockName:str):
-        """
+    def manageParameters(self,req,functionBlockName:str)-> None:
+        '''
         Manage the parameters of the function block.
         :param req: The request containing the parameters.
         :param functionBlockName: The name of the function block.
-        """
+        '''
         match functionBlockName:
             case "positionerRotate":
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.rotateClockwise",req.bool_param1,pyads.PLCTYPE_BOOL)
@@ -234,21 +234,25 @@ class ADS_Node(Node):
                 pass
 
     def runChecks(self,functionBlockName:str) -> tuple[bool,str]:
-        """
-        Run the checks before executing a function block.
+        '''
+        Check for the preconditions before executing a function block.
         :param functionBlockName: The name of the function block to check.
-        :return: A tuple containing a boolean indicating if the checks passed and a message.
-        """
+        :return: A tuple containing a boolean indicating if the checks passed and, in case of failure, a message explaining it.
+        '''
+
         match (functionBlockName):
             case "positionerRotate":
                 return self.checkPositionerRotate()
-                return (True,"")
             case "loadTray":
                 return self.checkLoadTray()
             case _:
                 return (True,None) #No checks for other function blocks, return True and None message.
         
     def checkPositionerRotate(self) -> tuple[bool,str]:
+        '''
+        Check if the positioner is in the right position.
+        :return: A tuple containing a boolean indicating if the positioner is in the right position and, in case of failure, a message explaining it.
+        '''
         palletWrkPos=self.plc.read_by_name(f"GVL_ATS.equipmentState.palletIsInWrkPos",pyads.PLCTYPE_BOOL)
         msg=None
         if(not palletWrkPos):
@@ -256,7 +260,10 @@ class ADS_Node(Node):
         return (palletWrkPos,msg)
 
     def checkLoadTray(self) -> tuple[bool,str]:
-
+        '''
+        Check if the tray is in the right position.
+        :return: A tuple containing a boolean indicating if the tray is in the right position and, in case of failure, a message explaining it.
+        '''
         side2Robot=self.plc.read_by_name(f"GVL_ATS.equipmentState.side2Robot",pyads.PLCTYPE_INT)
         msg=None
         if(side2Robot != 2):
@@ -272,7 +279,12 @@ class ADS_Node(Node):
         self.errorCheckEvent=True
 
 
-    def error_check(self,err_msg:str,goalHandler):
+    def error_check(self,err_msg:str,goalHandler) -> None:
+        '''
+        Handle the error check action.
+        :param err_msg: The error message to send to the client.
+        :param goalHandler: The goal handler to publish the feedback.
+        '''
         msg_feed=CallFunctionBlock.Feedback()
         msg_feed.msg_type=msg_type.ERROR_CHECK
         msg_feed.msg=err_msg
@@ -296,6 +308,9 @@ class ADS_Node(Node):
         
 
     def askPicture(self,msg,goalHandler):
+        '''
+        
+        '''
         msg_feed=CallFunctionBlock.Feedback()
         msg_feed.msg_type=msg_type.ASKING_PICTURE
         msg_feed.msg=msg
@@ -317,7 +332,7 @@ class ADS_Node(Node):
 
         Dummy function, as the actual implementation depends on the specific requirements of the application.
         """
-        return 0.0, 0.0, 0.0  # x, y, theta
+        return 0.09, 0.08, 0.07  # x, y, theta
 
     def manageMrTrolleyVCheckErrorCheck(self,goalHandler):
         funcState=req_state.ST_ERROR_CHECK
@@ -328,14 +343,16 @@ class ADS_Node(Node):
         while(funcState==req_state.ST_ERROR_CHECK):
             funcState=self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.State",pyads.PLCTYPE_INT)
         msg="Error check solved" 
-
         return msg,funcState
+    
+
     def manageMrTrolleyVCheck(self,goalHandler):
         funcState=self.plc.read_by_name("GVL_ATS.requests.mrTrolleyVCheck.State",pyads.PLCTYPE_INT)
         self.get_logger().info(f"funcState:{funcState}")
         match funcState:
             case req_state.ST_ERROR_CHECK:
                 msg,funcState=self.manageMrTrolleyVCheckErrorCheck(goalHandler)
+            #TODO: controllare se serve veramente lo state ready
             case req_state.ST_REQ_PENDING | req_state.ST_READY:
                 self.get_logger().info("[Debug]Waiting for the picture request...")
                 while(not self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.takePicture",pyads.PLCTYPE_BOOL)):
@@ -347,6 +364,12 @@ class ADS_Node(Node):
                 self.plc.write_by_name("GVL_ATS.requests.mrTrolleyVCheck.yVisCorrTray",y,pyads.PLCTYPE_REAL)
                 self.plc.write_by_name("GVL_ATS.requests.mrTrolleyVCheck.thetaVisCorrTray",theta,pyads.PLCTYPE_REAL)
                 self.plc.write_by_name("GVL_ATS.requests.mrTrolleyVCheck.pictureAvailable",1,pyads.PLCTYPE_BOOL)
+                while(self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.State",pyads.PLCTYPE_INT) == req_state.ST_REQ_PENDING):
+                    if(time.time()-self.lastTime>self.actionTimerDelay):
+                            self.lastTime=time.time()
+                            feedback_msg = CallFunctionBlock.Feedback()
+                            feedback_msg.msg="Wait for MR Trolley V Check state to update..."
+                            goalHandler.publish_feedback(feedback_msg)
                 while(self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.State",pyads.PLCTYPE_INT) in (
                                                                                                                                     req_state.ST_EXECUTING,
                                                                                                                                     req_state.ST_EXECUTING_2,
@@ -360,7 +383,7 @@ class ADS_Node(Node):
                 funcState=self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.State",pyads.PLCTYPE_INT)
                 msg=get_req_state_msg(funcState)
                 self.get_logger().info(f"[DEBUG]MR Trolley V Check completed with msg: {msg}")
-                if(funcState,pyads.PLCTYPE_INT == req_state.ST_ERROR_CHECK):
+                if(funcState == req_state.ST_ERROR_CHECK):
                     msg,funcState=self.manageMrTrolleyVCheckErrorCheck(goalHandler)
                 self.get_logger().info(f"[DEBUG]Exiting V check...")
             case _:

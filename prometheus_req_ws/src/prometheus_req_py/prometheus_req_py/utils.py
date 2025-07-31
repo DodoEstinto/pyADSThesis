@@ -44,6 +44,7 @@ def get_req_state_msg(state: int) -> str:
     state_mapping = {
         0:     ("Success! Robot Ready!"),
         40:    ("Waiting for the client to take action..."),
+        30:    ("Request completed!"),
         -20:   ("Stopped!"),
         -30:   ("ERROR!"),
         -40:   ("ERROR CHECK!"),
@@ -53,7 +54,7 @@ def get_req_state_msg(state: int) -> str:
         120:    ("Still running!"),
         
     }
-    return state_mapping.get(state,(False,"Invalid State!"))
+    return state_mapping.get(state,("State not mapped!"))
 
 
 
