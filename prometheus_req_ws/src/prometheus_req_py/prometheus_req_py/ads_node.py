@@ -500,6 +500,7 @@ class ADS_Node(Node):
             case req_state.ST_REQ_PENDING | req_state.ST_READY:
                 self.get_logger().info("[Debug]Waiting for the picture request...")
                 #TODO: sostituire il goalHandler con la stringa.
+                # Wait for the picture request to be sent.
                 while(not self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.takePicture",pyads.PLCTYPE_BOOL)):
                     pass
                 self.get_logger().info("[Debug]Picture request received, asking for the picture...")
@@ -531,6 +532,7 @@ class ADS_Node(Node):
                 funcState=self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.State",pyads.PLCTYPE_INT)
                 msg=get_req_state_msg(funcState)
                 self.get_logger().info(f"[DEBUG]MR Trolley V Check completed with msg: {msg}")
+                #After the execution, we check if there is an error check to be managed.
                 if(funcState == req_state.ST_ERROR_CHECK):
                     msg,funcState=self.manageMrTrolleyVCheckErrorCheck(goalHandler)
                 self.get_logger().info(f"[DEBUG]Exiting V check...")
@@ -540,15 +542,22 @@ class ADS_Node(Node):
         return msg,funcState
 
     def managePositionerRotate(self,goalHandler) -> tuple[str,int]:
+        '''
+        Manage the individual behaviour of the positioner rotate function block.
+        :param goalHandler: The goal handler to manage the request.
+        :return: A tuple containing the message and the state of the function block.
+        '''
         #TODO:controllare che state serva veramente (non penso)
         funcState=self.plc.read_by_name("GVL_ATS.requests.positionerRotate.State",pyads.PLCTYPE_INT)
         self.get_logger().info(f"funcState:{funcState}")
+        #After the execution, we check if there is an error check to be managed.
         if(funcState == req_state.ST_ERROR_CHECK):
             self.get_logger().info("[ADS_Node]Checking Positioner Rotate...")
 
             self.error_check("PositionerRotate Error Check",goalHandler)
             self.plc.write_by_name("GVL_ATS.requests.positionerRotate.errorAck",1,pyads.PLCTYPE_BOOL)
             self.get_logger().info("[ADS_Node]ACK sent for Positioner Rotate Error Check!") 
+            #Wait for the error check to be solved.
             while(funcState==req_state.ST_ERROR_CHECK):
                 funcState=self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.State",pyads.PLCTYPE_INT)
             msg="Error check solved"
@@ -558,14 +567,20 @@ class ADS_Node(Node):
         return msg,funcState
     
     def manageLoadTray(self,goalHandler) -> tuple[str,int]:
+        '''
+        Manage the individual behaviour of the load tray function block.
+        :param goalHandler: The goal handler to manage the request.
+        :return: A tuple containing the message and the state of the function block.
+        '''
         funcState=self.plc.read_by_name("GVL_ATS.requests.loadTray.State",pyads.PLCTYPE_INT)
         self.get_logger().info(f"funcState:{funcState}")
 
+        #after the esecution, we check if there is an error check to be managed.
         if(funcState == req_state.ST_ERROR_CHECK):
             self.get_logger().info("[ADS_Node]Checking Load Tray...")
-
             self.error_check("Load Tray Error Check",goalHandler)
             self.plc.write_by_name("GVL_ATS.requests.loadTray.errorAck",1,pyads.PLCTYPE_BOOL)
+            #Wait for the error check to be solved.
             while(funcState==req_state.ST_ERROR_CHECK):
                 funcState=self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.state",pyads.PLCTYPE_INT)
             msg="Error check solved"
@@ -574,7 +589,9 @@ class ADS_Node(Node):
 
         return msg,funcState
     
+    #TODO: da implementare
     def manageDepositTray(self,goalHandler) -> tuple[str,int]:
+
         funcState=self.plc.read_by_name("GVL_ATS.requests.depositTray.State",pyads.PLCTYPE_INT)
         self.get_logger().info(f"funcState:{funcState}")
 
@@ -634,20 +651,19 @@ class ADS_Node(Node):
     def status_callback(self,notification,_): #_=data
         '''
         This function is called each time equipementStatus on the plc changes.
+        It parses the notification and publishes the status update on the state topic.
+        :param notification: The notification received from the PLC.
+        :param _: Unused paramenter.
         '''
         #WARNING: if you change the type of the notification, you have also to update it in the statusMemory init!
         handle,timestamp,value=self.plc.parse_notification(notification,EquipmentStatus_ctype)
-        #handle,timestamp,value=self.plc.parse_notification(notification,ctypes.c_ubyte)
-        
         statusUpdate=self.cpy_to_equipment_status_msg(value)
- 
-
         self.publisher_.publish(statusUpdate)
         self.lastStatus=deepcopy(statusUpdate)
-        #self.get_logger().info("[ADS_Node]Sending status update!")
 
 
     def timer_callback(self):
+  
         if(self.lastStatus is None):
             status=self.plc.read_by_name('GVL_ATS.equipmentState',EquipmentStatus_ctype)
             self.get_logger().info("[ADS_Node]No status received yet, reading from PLC...")
