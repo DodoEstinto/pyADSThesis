@@ -663,7 +663,10 @@ class ADS_Node(Node):
 
 
     def timer_callback(self):
-  
+        '''
+        This function is called periodically. It publishes a status update on the state topic.
+        TODO: else is needed?
+        '''
         if(self.lastStatus is None):
             status=self.plc.read_by_name('GVL_ATS.equipmentState',EquipmentStatus_ctype)
             self.get_logger().info("[ADS_Node]No status received yet, reading from PLC...")
@@ -671,8 +674,6 @@ class ADS_Node(Node):
         else:
             statusUpdate=self.lastStatus
         self.publisher_.publish(statusUpdate)
-        self.get_logger().debug(f"[ADS_Node]Sending periodic status update!")
-        #rclpy.spin_once(self,timeout_sec=0.01)
         
 
 def main(args=None):

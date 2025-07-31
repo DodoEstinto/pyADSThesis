@@ -23,8 +23,7 @@ import tkinter as tk
 from tkinter import messagebox,simpledialog
 from std_msgs.msg import Empty
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy
-from prometheus_req_py.utils import req_state,msg_type
-from typing import Literal
+from prometheus_req_py.utils import msg_type
 
 
 
@@ -39,11 +38,13 @@ class Client_Node(Node):
         This function is called when the building block buttons are pressed.
         It sends an async request to the service server.
         '''
+
+        #Prevent to call a second function call while the previous one is still executing.
         if not self.functionBlockCalled:
             self.functionBlockCalled=True
             self.get_logger().info(f"[Client_node] Calling Block {name}")
             self.req.function_block_name=name
-        
+            #based on the function called, a different parameter is asked.
             match(name):
                 case "loadTray":
                     answer = messagebox.askyesno("Load Tray", "Load(Yes) or Unload(No) the tray?")
@@ -55,7 +56,9 @@ class Client_Node(Node):
                     screw = simpledialog.askinteger("Pick Up Screw", "Enter the screw number to pick up (1-6):", minvalue=1, maxvalue=6)
                     self.req.int_param1=screw
 
+            #Ask the permission to run the function block.
             self.send_goal_future=self.client.send_goal_async(self.req,feedback_callback=self.goal_feedback_callback)
+            #Tell where you are waiting for a response.
             self.send_goal_future.add_done_callback(self.goal_response_callback)
             self.get_logger().info(f"[Client_node] Done")
         else:
@@ -66,9 +69,15 @@ class Client_Node(Node):
                 
         
     def goal_response_callback(self,future):
+        '''
+        This function is called when the action client receive a response.
+
+        '''
         goalHandler=future.result()
         self.get_logger().info(f"[CLIENT NODE] Action response:Entering")
 
+        #If the action is refused. Even if the ads node never refuses, 
+        #this has been added for anomaly robusteness.
         if not goalHandler.accepted:
             self.get_logger().info(f"[CLIENT NODE] Action response:Not accepted")
             self.update_response_text("Command not accepted", isResult=False)
@@ -78,49 +87,43 @@ class Client_Node(Node):
         self.get_logger().info(f"[CLIENT NODE] Action response: Accepted")
         self.update_response_text("Command accepted", isResult=False)
 
+        #Ask for the result.
         self.send_goal_future= goalHandler.get_result_async()
+        #Tell where you are waiting for a response.
         self.send_goal_future.add_done_callback(self.goal_result_callback)
 
     def goal_result_callback(self,future):
-        self.get_logger().info(f"[CLIENT NODE] Action result:Entering")
+        '''
+        This function is called when the action client receive a result.
+        '''
         self.functionBlockResult=future.result().result.result
         self.functionBlockState=future.result().result.state
         self.functionBlockMsg=future.result().result.msg
         self.functionBlockCalled=False
-        self.update_labels()
+  
+        self.update_labels()  #TODO: needed?
         self.update_response_text(self.functionBlockMsg, isResult=True)
-
-        self.get_logger().info(f"[CLIENT NODE] Action result:{self.functionBlockState},{self.functionBlockMsg}")
-
-
     
     def goal_feedback_callback(self,feedback):
-        #self.get_logger().info(f"[CLIENT NODE]FEEDBACK!")
+        '''
+        This function is called when the action client receive a feedback.
+        '''
         msgType=feedback.feedback.msg_type
         self.functionBlockMsg=feedback.feedback.msg
-        self.get_logger().info(f"[CLIENT NODE]msgType:{msgType}")
+        #Based on the msg type manage the feedback differently.
+        #Refer to msg_type documentation for more informations about it
         match msgType:
             case msg_type.ERROR_CHECK:
                 self.update_response_text("Error check in progress...", isResult=False)
                 _=OkDialog(self.root, title="Error Check", message=self.functionBlockMsg)
-                self.get_logger().info(f"[CLIENT] SENDIND ACK!")
                 self.errorCheckPub.publish(Empty())
             case msg_type.ASKING_PICTURE:
                 self.update_response_text("Asking a photo...", isResult=False)
                 _=OkDialog(self.root, title="Take Picture", message="Press ok to take a picture!")
                 self.imagePub.publish(Empty())
             case _:
-                self.update_labels()
+                self.update_labels() #TODO: needed?
                 self.update_response_text(self.functionBlockMsg, isResult=False)
-    
-
-    def update_callback(self,data):
-        '''
-        This function is called when the service client receive a response.
-        It updates the GUI.
-        '''
-        #self.get_logger().info(f'CALLBACK: {data}')
-        self.update_labels()
         
 
 
@@ -306,23 +309,7 @@ class Client_Node(Node):
             self.screw_text.insert(tk.END, f"max=({slot.max_idx_x},{slot.max_idx_y}) ")
             self.screw_text.insert(tk.END, f"next=({slot.next_idx_x},{slot.next_idx_y})\n")
         self.screw_text.configure(state='disabled')
-        
-        #if self.client_request_response==None:
-        #    self.get_logger().info(f"client_request_response:N/A")
-        #else:
-            #self.get_logger().info(f"client_request_response:{self.client_request_response.result().result}")
 
-        '''
-        if(self.functionBlockCalled):
-            self.response_text.configure(state='normal')
-            self.response_text.delete('1.0', tk.END)
-            if(self.functionBlockDone):
-                self.update_response_text(self.functionBlockMsg, isMsg=True)
-            else:
-                msg="Waiting for a response..."
-            self.response_text.insert("1.0",msg)
-            self.response_text.configure(state="disabled")
-        '''
             
     def update_response_text(self, text:str, isResult:bool=False):
         '''
@@ -350,6 +337,9 @@ class Client_Node(Node):
             'state',
             self.state_update_callback,
             1)
+        
+        #it's essential that we do not lost the acks due to a networking failure
+        #so we guarantee that samples are delivered, also trying multiple times.
         qos = QoSProfile(
             depth=3,
             reliability=QoSReliabilityPolicy.RELIABLE
@@ -381,7 +371,8 @@ class Client_Node(Node):
 
     def state_update_callback(self, msg):
         '''
-        Called each time the plc's equipmentstate changes
+        Called each time the plc's equipmentstate changes.
+        It updates the local state variable and the labels of the GUI.
         '''
         #Testing code
         #self.get_logger().info("[Client_node]Receinving:"+str(msg.active_state_fsm_string))
@@ -395,12 +386,18 @@ def main(args=None):
     root=tk.Tk()
     client_node = Client_Node(root)
 
+    '''
+    Both ROS and Tkinker are liveservices that requires the complete control of the process to work.
+    With this trick we embed the spinning of the ROS node inside the mainloop of Tkinker, forcing a
+    pseudo-parallel execution of both.
+    '''
     def update_ros():
+        '''
+        It spin once the ROS node and then schedule in Tkinker its next spin.
+        '''
         rclpy.spin_once(client_node,timeout_sec=0.005)
         #client_node.get_logger().info("[Client_node]Spinning once...")
-        root.after(1, update_ros)  # Schedule the next call
-
-    
+        root.after(1, update_ros)  # Schedule the next call 
     root.after(1,update_ros)
 
   
