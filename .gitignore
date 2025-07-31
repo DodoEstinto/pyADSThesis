@@ -5,3 +5,4 @@ prometheus_req_ws/bin/
 prometheus_req_ws/lib/
 prometheus_req_ws/install/
 prometheus_req_ws/setupLAN.bash
+prometheus_req_ws/src/prometheus_req_bringup/config/ads_node_config.yaml

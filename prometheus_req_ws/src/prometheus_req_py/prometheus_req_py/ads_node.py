@@ -110,12 +110,21 @@ class ADS_Node(Node):
 
 
     def block_execute_callback(self,goalHandler):
+        '''
+        Callback for the action server. This function is called when a client sends a request to the action server.
+        First it checks if the block is ready to be executed, then it runs the checks and manages the parameters.
+        Later it sends the request to the PLC and waits for the state change from executing.
+        Finally it manages the function block individual behaviour and returns the result.
+
+        :param goalHandler: The goal handler to manage the request.
+        :return: The result of the action.
+        '''
         self.get_logger().info(f"[DEBUG]block_execute_callback")
 
         functionBlockName=goalHandler.request.function_block_name
 
         #TODO: update as needed
-        allowedFunctionBlocks=["positionerRotate","loadTray","mrTrolleyVCheck"]
+        allowedFunctionBlocks=["positionerRotate","loadTray","mrTrolleyVCheck","screwPickup"]
         if(functionBlockName    not in allowedFunctionBlocks):
             self.get_logger().info(f"[ADS_Node] Function Block {goalHandler.request.function_block_name} not allowed! Allowed function blocks are: {allowedFunctionBlocks}")
             goalHandler.abort()
@@ -160,6 +169,8 @@ class ADS_Node(Node):
             #Send the request to the PLC
             self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.request",1,pyads.PLCTYPE_BOOL)
 
+            while(self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT) == req_state.ST_READY):
+                pass
 
             #Wait the completion of the task
             while(self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT) in (req_state.ST_EXECUTING,
@@ -187,7 +198,7 @@ class ADS_Node(Node):
                     feedback_msg.msg="Busy! Waiting..."
                     goalHandler.publish_feedback(feedback_msg)
             '''
-            self.get_logger().info(f"[DEBUG]Function Block {functionBlockName} executed, not busy.")
+            self.get_logger().info(f"[DEBUG]Function Block {functionBlockName} executed.")
             actualState=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT)
             feedback_msg.msg_type=msg_type.NORMAL
             feedback_msg.msg="Handling the building block..."
@@ -198,10 +209,14 @@ class ADS_Node(Node):
                         result.msg,result.state=self.managePositionerRotate(goalHandler)
                 case "loadTray":
                         result.msg,result.state=self.manageLoadTray(goalHandler)
+                #TODO: NOT TESTED
                 case "depositTray":
                         result.msg,result.state=self.manageDepositTray(goalHandler)
                 case "mrTrolleyVCheck":
                         result.msg,result.state=self.manageMrTrolleyVCheck(goalHandler)
+                case "screwPickup":
+                        result.msg,result.state=self.manageScrewPickup(goalHandler)
+
 
             goalHandler.succeed()
             result.result=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.Done",pyads.PLCTYPE_BOOL)
@@ -232,6 +247,9 @@ class ADS_Node(Node):
                 #self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.yVisCorrTray",req.float_param2,pyads.PLCTYPE_REAL)
                 #self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.thetaVisCorrTray",req.float_param3,pyads.PLCTYPE_REAL)
                 pass
+            case "screwPickup":
+                #screwType
+                self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.screwType",req.int_param1,pyads.PLCTYPE_INT)
 
     def runChecks(self,functionBlockName:str) -> tuple[bool,str]:
         '''
@@ -245,6 +263,8 @@ class ADS_Node(Node):
                 return self.checkPositionerRotate()
             case "loadTray":
                 return self.checkLoadTray()
+            case "screwPickup":
+                return self.checkScrewPickup()
             case _:
                 return (True,None) #No checks for other function blocks, return True and None message.
         
@@ -270,6 +290,17 @@ class ADS_Node(Node):
             msg="Tray not in the right position! Please move the tray to the right position before calling this function block."
         return (side2Robot == 2,msg)
 
+    def checkScrewPickup(self) -> tuple[bool,str]:
+        '''
+        Check if the holder correction is done.
+        :return: A tuple containing a boolean indicating if the holder correction is done and, in case of failure, a message explaining it.
+        '''
+        holderCorrectionDone=self.plc.read_by_name(f"GVL_ATS.equipmentState.holderCorrectionDone",pyads.PLCTYPE_BOOL)
+        msg=None
+        if(not holderCorrectionDone):
+            msg= "Holder correction not done! Please perform the offset calibration before calling this function block."
+        return (holderCorrectionDone,msg)
+    
     def error_check_callback(self, _):
         """
         Callback for the error check action.
@@ -309,7 +340,7 @@ class ADS_Node(Node):
 
     def askPicture(self,msg,goalHandler):
         '''
-        
+        Handle the ask picture action.
         '''
         msg_feed=CallFunctionBlock.Feedback()
         msg_feed.msg_type=msg_type.ASKING_PICTURE
@@ -326,15 +357,119 @@ class ADS_Node(Node):
 
     def calculate_picture_offset(self,picture):
         """
+        Dummy function, as the actual implementation depends on the specific requirements of the application.
         Calculate the offset of the picture.
         :param picture: The picture to calculate the offset for.
         :return: The offset of the picture.
 
-        Dummy function, as the actual implementation depends on the specific requirements of the application.
         """
-        return 0.09, 0.08, 0.07  # x, y, theta
+        return 0.01, 0.9, 0.01  # x, y, theta
+
+    def manageScrewPickupErrorCheck(self,goalHandler):
+        '''
+        Manage the error check for the screw pickup function block.
+        :param goalHandler: The goal handler to manage the request.
+        '''
+        funcState=req_state.ST_ERROR_CHECK
+        self.get_logger().info("[ADS_Node]Checking pickupScrew Error Check...")
+        self.error_check("pickupScrew Error Check",goalHandler)
+        self.plc.write_by_name("GVL_ATS.requests.screwPickup.errorAck",1,pyads.PLCTYPE_BOOL)
+        self.get_logger().info("[ADS_Node]ACK sent for pickupScrew Error Check!") 
+        while(funcState==req_state.ST_ERROR_CHECK):
+            funcState=self.plc.read_by_name(f"GVL_ATS.requests.screwPickup.State",pyads.PLCTYPE_INT)
+        msg="Error check solved" 
+        return msg,funcState
+
+    def manageScrewPickupLogic(self,goalHandler,funcState):
+        self.get_logger().info(f"[DEBUG]Logic funcState:{funcState}")
+        if funcState == req_state.ST_REQ_PENDING | req_state.ST_READY:
+                    self.get_logger().info("[Debug]Waiting for the picture request...")
+                    while(not self.plc.read_by_name(f"GVL_ATS.requests.screwPickup.takePicture",pyads.PLCTYPE_BOOL)):
+                        pass
+                    self.get_logger().info("[Debug]Picture request received, asking for the picture...")
+                    x,y,theta=self.askPicture("Asking Picture",goalHandler)
+                    self.get_logger().info(f"[Debug]Picture received with offsets: x={x}, y={y}, theta={theta}")
+                    self.plc.write_by_name("GVL_ATS.requests.screwPickup.xVisCorrTray",x,pyads.PLCTYPE_REAL)
+                    self.plc.write_by_name("GVL_ATS.requests.screwPickup.yVisCorrTray",y,pyads.PLCTYPE_REAL)
+                    self.plc.write_by_name("GVL_ATS.requests.screwPickup.thetaVisCorrTray",theta,pyads.PLCTYPE_REAL)
+                    self.plc.write_by_name("GVL_ATS.requests.screwPickup.pictureAvailable",1,pyads.PLCTYPE_BOOL)
+
+                    
+                    #waiting for the pickupScrew state to update
+                    while(self.plc.read_by_name(f"GVL_ATS.requests.screwPickup.State",pyads.PLCTYPE_INT)== req_state.ST_REQ_PENDING):
+                        if(time.time()-self.lastTime>self.actionTimerDelay):
+                                self.lastTime=time.time()
+                                feedback_msg = CallFunctionBlock.Feedback()
+                                feedback_msg.msg="Waiting for pickupScrew state to update..."
+                                goalHandler.publish_feedback(feedback_msg)
+
+                    #waiting for the pickup operation to finish
+                    while(self.plc.read_by_name(f"GVL_ATS.requests.screwPickup.State",pyads.PLCTYPE_INT) in (
+                                                                                                            req_state.ST_EXECUTING,
+                                                                                                            req_state.ST_EXECUTING_2,
+                                                                                                            req_state.ST_EXECUTING_3,
+                                                                                                            req_state.ST_EXECUTING_4)):
+                        if(time.time()-self.lastTime>self.actionTimerDelay):
+                                self.lastTime=time.time()
+                                feedback_msg = CallFunctionBlock.Feedback()
+                                feedback_msg.msg="Waiting for the screw pickup..."
+                                goalHandler.publish_feedback(feedback_msg)
+
+
+                    funcState=self.plc.read_by_name(f"GVL_ATS.requests.screwPickup.State",pyads.PLCTYPE_INT)
+                    msg=get_req_state_msg(funcState)
+                    self.get_logger().info(f"[DEBUG]PickupScrew completed with msg: {msg}")
+
+
+    def manageScrewPickup(self,goalHandler) -> tuple[str,int]:
+        '''
+        Manage the individual behaviour of the screw pickup function block.
+        :param goalHandler: The goal handler to manage the request.
+        :return: A tuple containing the message and the state of the function block.
+        '''
+
+        funcState=self.plc.read_by_name("GVL_ATS.requests.screwPickup.State",pyads.PLCTYPE_INT)
+        self.get_logger().info(f"[DEBUG]funcState:{funcState}")
+
+        if(funcState == req_state.ST_READY):
+            self.get_logger().info(f"[DEBUG]Inside the if")
+            self.manageScrewPickupLogic(goalHandler,funcState)
+
+        funcState=self.plc.read_by_name("GVL_ATS.requests.screwPickup.State",pyads.PLCTYPE_INT)
+        self.get_logger().info(f"[DEBUG]funcState:{funcState}")
+
+        while(funcState in (req_state.ST_REQ_PENDING,
+                            req_state.ST_EXECUTING,
+                            req_state.ST_EXECUTING_2,
+                            req_state.ST_EXECUTING_3,
+                            req_state.ST_EXECUTING_4
+                            )):
+            self.get_logger().info(f"[DEBUG]Inside while funcState:{funcState}")
+            
+            if(funcState == req_state.ST_REQ_PENDING):
+                self.get_logger().info(f"[DEBUG]Inside if funcState:{funcState}")
+                self.manageScrewPickupLogic(goalHandler,funcState)
+                self.get_logger().info(f"[DEBUG]Exiting if funcState:{funcState}")
+            funcState= self.plc.read_by_name("GVL_ATS.requests.screwPickup.State",pyads.PLCTYPE_INT)
+        
+        #there is a transaction in this state also in case of error check, we wait for it to finish and analyze the final state.
+        while (funcState == req_state.ST_REQ_COMPLETION):
+            funcState=self.plc.read_by_name("GVL_ATS.requests.screwPickup.State",pyads.PLCTYPE_INT)
+
+        if(funcState == req_state.ST_ERROR_CHECK):
+            msg,funcState=self.manageScrewPickupErrorCheck(goalHandler)
+            self.get_logger().info(f"[DEBUG]Exiting  pickupScrew...")
+        else:
+            msg=get_req_state_msg(funcState)
+        return msg,funcState
+
 
     def manageMrTrolleyVCheckErrorCheck(self,goalHandler):
+        '''
+        Manage the error check for the MR Trolley V Check fucntion block.
+        :param goalHandler: The goal handler to manage the request.
+        :return: A tuple containing the message and the state of the function block.
+        '''
         funcState=req_state.ST_ERROR_CHECK
         self.get_logger().info("[ADS_Node]Checking MR Trolley V Error Check...")
         self.error_check("MR Trolley V Check Error Check",goalHandler)
@@ -344,9 +479,18 @@ class ADS_Node(Node):
             funcState=self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.State",pyads.PLCTYPE_INT)
         msg="Error check solved" 
         return msg,funcState
-    
 
+
+            
+        
+    #TODO: pratically identical to manageScrewPickup, consider merging them.
+    #TODO: 
     def manageMrTrolleyVCheck(self,goalHandler):
+        '''
+        Manage the individual behaviour of the MR Trolley V Check function block.
+        :param goalHandler: The goal handler to manage the request.
+        :return: A tuple containing the message and the state of the function block.
+        '''
         funcState=self.plc.read_by_name("GVL_ATS.requests.mrTrolleyVCheck.State",pyads.PLCTYPE_INT)
         self.get_logger().info(f"funcState:{funcState}")
         match funcState:
@@ -355,6 +499,7 @@ class ADS_Node(Node):
             #TODO: controllare se serve veramente lo state ready
             case req_state.ST_REQ_PENDING | req_state.ST_READY:
                 self.get_logger().info("[Debug]Waiting for the picture request...")
+                #TODO: sostituire il goalHandler con la stringa.
                 while(not self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.takePicture",pyads.PLCTYPE_BOOL)):
                     pass
                 self.get_logger().info("[Debug]Picture request received, asking for the picture...")
@@ -364,12 +509,15 @@ class ADS_Node(Node):
                 self.plc.write_by_name("GVL_ATS.requests.mrTrolleyVCheck.yVisCorrTray",y,pyads.PLCTYPE_REAL)
                 self.plc.write_by_name("GVL_ATS.requests.mrTrolleyVCheck.thetaVisCorrTray",theta,pyads.PLCTYPE_REAL)
                 self.plc.write_by_name("GVL_ATS.requests.mrTrolleyVCheck.pictureAvailable",1,pyads.PLCTYPE_BOOL)
+
                 while(self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.State",pyads.PLCTYPE_INT) == req_state.ST_REQ_PENDING):
                     if(time.time()-self.lastTime>self.actionTimerDelay):
                             self.lastTime=time.time()
                             feedback_msg = CallFunctionBlock.Feedback()
                             feedback_msg.msg="Wait for MR Trolley V Check state to update..."
                             goalHandler.publish_feedback(feedback_msg)
+
+                #TODO: technically this should never happen, but just in case.
                 while(self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.State",pyads.PLCTYPE_INT) in (
                                                                                                                                     req_state.ST_EXECUTING,
                                                                                                                                     req_state.ST_EXECUTING_2,

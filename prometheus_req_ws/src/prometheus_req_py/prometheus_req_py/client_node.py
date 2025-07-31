@@ -51,7 +51,9 @@ class Client_Node(Node):
                 case "positionerRotate":
                     answer = messagebox.askyesno("Positioner Rotate", "Rotate clockwise(Yes) or anticlockwise(No)?")
                     self.req.bool_param1=answer
-                
+                case "screwPickup":
+                    screw = simpledialog.askinteger("Pick Up Screw", "Enter the screw number to pick up (1-6):", minvalue=1, maxvalue=6)
+                    self.req.int_param1=screw
 
             self.send_goal_future=self.client.send_goal_async(self.req,feedback_callback=self.goal_feedback_callback)
             self.send_goal_future.add_done_callback(self.goal_response_callback)
