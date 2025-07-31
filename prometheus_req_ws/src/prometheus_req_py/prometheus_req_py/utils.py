@@ -14,6 +14,10 @@ class req_state(IntEnum):
     ST_EXECUTING_3=110,
     ST_EXECUTING_4=120
 
+class msg_type(IntEnum):
+    NORMAL = 0
+    ERROR_CHECK = 1
+    ASKING_PICTURE = 2
 class OkDialog(tk.Toplevel):
     def __init__(self, parent, title="Message", message=""):
         super().__init__(parent)
@@ -50,6 +54,8 @@ def get_req_state_msg(state: int) -> str:
         
     }
     return state_mapping.get(state,(False,"Invalid State!"))
+
+
 
 def get_req_type(val:str) -> int:
     block_mapping = {

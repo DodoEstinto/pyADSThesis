@@ -20,9 +20,11 @@ from prometheus_req_interfaces.msg import EquipmentStatus
 from prometheus_req_interfaces.action import CallFunctionBlock
 from prometheus_req_py.utils import OkDialog
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox,simpledialog
 from std_msgs.msg import Empty
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy
+from prometheus_req_py.utils import req_state,msg_type
+from typing import Literal
 
 
 
@@ -41,26 +43,38 @@ class Client_Node(Node):
             self.functionBlockCalled=True
             self.get_logger().info(f"[Client_node] Calling Block {name}")
             self.req.function_block_name=name
+        
+            match(name):
+                case "loadTray":
+                    answer = messagebox.askyesno("Load Tray", "Load(Yes) or Unload(No) the tray?")
+                    self.req.bool_param1=answer
+                case "positionerRotate":
+                    answer = messagebox.askyesno("Positioner Rotate", "Rotate clockwise(Yes) or anticlockwise(No)?")
+                    self.req.bool_param1=answer
+                
+
             self.send_goal_future=self.client.send_goal_async(self.req,feedback_callback=self.goal_feedback_callback)
             self.send_goal_future.add_done_callback(self.goal_response_callback)
             self.get_logger().info(f"[Client_node] Done")
         else:
             self.get_logger().info(f"[Client_node] Function Block already called, waiting for response...")
-            self.update_response_text("A function Block has been already called, waiting for its response...", isMsg=False)
+            self.update_response_text("A function Block has been already called, waiting for its response...", isResult=False)
         
-
+        
+                
+        
     def goal_response_callback(self,future):
         goalHandler=future.result()
         self.get_logger().info(f"[CLIENT NODE] Action response:Entering")
 
         if not goalHandler.accepted:
             self.get_logger().info(f"[CLIENT NODE] Action response:Not accepted")
-            self.update_response_text("Command not accepted", isMsg=False)
+            self.update_response_text("Command not accepted", isResult=False)
             self.functionBlockCalled=False
             return
         
         self.get_logger().info(f"[CLIENT NODE] Action response: Accepted")
-        self.update_response_text("Command accepted", isMsg=False)
+        self.update_response_text("Command accepted", isResult=False)
 
         self.send_goal_future= goalHandler.get_result_async()
         self.send_goal_future.add_done_callback(self.goal_result_callback)
@@ -72,31 +86,31 @@ class Client_Node(Node):
         self.functionBlockMsg=future.result().result.msg
         self.functionBlockCalled=False
         self.update_labels()
-        self.update_response_text(self.functionBlockMsg, isMsg=True)
+        self.update_response_text(self.functionBlockMsg, isResult=True)
 
         self.get_logger().info(f"[CLIENT NODE] Action result:{self.functionBlockState},{self.functionBlockMsg}")
 
 
     
     def goal_feedback_callback(self,feedback):
-        self.get_logger().info(f"[CLIENT NODE]FEEDBACK!")
-        errorCheck=feedback.feedback.error_check
+        #self.get_logger().info(f"[CLIENT NODE]FEEDBACK!")
+        msgType=feedback.feedback.msg_type
         self.functionBlockMsg=feedback.feedback.msg
-        self.get_logger().info(f"[CLIENT NODE]Error check:{errorCheck}")
-        if errorCheck:
-            self.update_response_text("Error check in progress...", isMsg=False)
-            _=OkDialog(self.root, title="Error Check", message=self.functionBlockMsg)
-            self.get_logger().info(f"[CLIENT] SENDIND ACK!")
-            self.errorCheckPub.publish(Empty())
-        
-        else:
-            self.update_labels()
-            self.update_response_text(self.functionBlockMsg, isMsg=True)
-        
-    def error_check_callback(self,_):
-        self.update_response_text("Error check in progress...", isMsg=False)
-        _=OkDialog(self.root, title="Error Check", message=self.functionBlockMsg)
-        self.errorCheckPub.publish(Empty())
+        self.get_logger().info(f"[CLIENT NODE]msgType:{msgType}")
+        match msgType:
+            case msg_type.ERROR_CHECK:
+                self.update_response_text("Error check in progress...", isResult=False)
+                _=OkDialog(self.root, title="Error Check", message=self.functionBlockMsg)
+                self.get_logger().info(f"[CLIENT] SENDIND ACK!")
+                self.errorCheckPub.publish(Empty())
+            case msg_type.ASKING_PICTURE:
+                self.update_response_text("Asking a photo...", isResult=False)
+                _=OkDialog(self.root, title="Take Picture", message="Press ok to take a picture!")
+                self.imagePub.publish(Empty())
+            case _:
+                self.update_labels()
+                self.update_response_text(self.functionBlockMsg, isResult=False)
+    
 
     def update_callback(self,data):
         '''
@@ -296,7 +310,7 @@ class Client_Node(Node):
         #else:
             #self.get_logger().info(f"client_request_response:{self.client_request_response.result().result}")
 
-        
+        '''
         if(self.functionBlockCalled):
             self.response_text.configure(state='normal')
             self.response_text.delete('1.0', tk.END)
@@ -306,15 +320,16 @@ class Client_Node(Node):
                 msg="Waiting for a response..."
             self.response_text.insert("1.0",msg)
             self.response_text.configure(state="disabled")
+        '''
             
-    def update_response_text(self, text:str, isMsg:bool=False):
+    def update_response_text(self, text:str, isResult:bool=False):
         '''
         Update the response text box with a new message.
         If isMsg is True, it will be treated as a message, otherwise as a status update.
         '''
         self.response_text.configure(state='normal')
         self.response_text.delete('1.0', tk.END)
-        if isMsg:
+        if isResult:
             if(self.functionBlockResult):
                 msg = f"[Success!] Message: {text}"
             else:
@@ -334,12 +349,18 @@ class Client_Node(Node):
             self.state_update_callback,
             1)
         qos = QoSProfile(
-            depth=10,
+            depth=3,
             reliability=QoSReliabilityPolicy.RELIABLE
         )
         self.errorCheckPub= self.create_publisher(
             Empty,
             'errorCheckAck',
+            qos_profile=qos
+        )
+
+        self.imagePub = self.create_publisher(
+            Empty,
+            'takePicture',
             qos_profile=qos
         )
 
