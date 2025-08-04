@@ -2,6 +2,9 @@
 from enum import IntEnum
 import tkinter as tk
 class req_state(IntEnum):
+    '''
+    Enum representing the possible states of the FSM.
+    '''
     ST_ERROR_CHECK = -40
     ST_ERROR = -30
     ST_STOP = -20,
@@ -15,6 +18,9 @@ class req_state(IntEnum):
     ST_EXECUTING_4=120
 
 class msg_type(IntEnum):
+    '''
+    Enum representing the type of message sent via action feedback.
+    '''
     NORMAL = 0
     ERROR_CHECK = 1
     ASKING_PICTURE = 2
@@ -41,8 +47,16 @@ class OkDialog(tk.Toplevel):
         self.destroy()
 
 def get_req_state_msg(state: int) -> str:
+    '''
+    Returns a default message corresponding to the given state.
+    Args:
+        state (int): The state code to map to a message.
+    Returns:
+        str: A message corresponding to the state code.
+    If the state code is not recognized, returns "State not mapped!".
+    '''
     state_mapping = {
-        0:     ("Success! Robot Ready!"),
+        0:     ("Success! Ready!"),
         40:    ("Waiting for the client to take action..."),
         30:    ("Request completed!"),
         -20:   ("Stopped!"),
@@ -55,25 +69,3 @@ def get_req_state_msg(state: int) -> str:
         
     }
     return state_mapping.get(state,("State not mapped!"))
-
-
-
-def get_req_type(val:str) -> int:
-    block_mapping = {
-        "loadTray": 3,
-        "pickUpTray": 0,
-        "depositTray": 0,
-        "srHoming": 0,
-        "mrHoming": 0,
-        "mrTrolleyVCheck": 0,
-        "gyroGrpRot": 0,
-        "screwTight": 0,
-        "screwPickup": 0,
-        "presentToScrew": 0,
-        "positionerRotate": 1,
-        "stackTray": 0,
-        "present2Op": 0,
-        "setScrewBayState": 1
-        }
-    return block_mapping.get(val, 0)  # 0 = default value for unknown strings.
-    

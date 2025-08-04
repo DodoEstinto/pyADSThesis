@@ -129,7 +129,8 @@ class Client_Node(Node):
 
     def init_labels(self):
         '''
-        Init all the labels with default values.
+        Initialize all labels to "N/A" and neutral background.
+        This is called at the start of the GUI to ensure all fields are reset.
         '''
     # Reset all label fields to "N/A" and neutral background
         for field, label in self.labels.items():
@@ -165,11 +166,17 @@ class Client_Node(Node):
         button_frame.pack(side='right', fill='y')
 
         def make_section(parent:tk.Frame, title:str) -> tk.LabelFrame:
+            ''' 
+            Create a labeled section frame.
+            '''
             frame = tk.LabelFrame(parent, text=title, font=header_font, padx=10, pady=10)
             frame.pack(fill='x', pady=5)
             return frame
 
         def add_label(frame, field, row):
+            '''
+            Add a label to the given frame for the specified field.
+            '''
             label = tk.Label(frame, text=f"{field.replace('_', ' ').capitalize()}:", font=label_font, anchor='w')
             value = tk.Label(frame, text="N/A", font=label_font, width=15, bg="#ddd", anchor='w')
             label.grid(row=row, column=0, sticky='w')
@@ -254,9 +261,13 @@ class Client_Node(Node):
         self.init_labels()
 
     def update_labels(self):
+        ''' Update all labels with the current state values.
+        It uses a color coding scheme:
+        - Green for True values
+        - Red for False values
+        - Grey for N/A or unknown values
         '''
-        Update every value of every field based on the current state.
-        '''
+
         def color(val):
             return "#c8e6c9" if val else "#ffcdd2"
 
@@ -403,11 +414,17 @@ def main(args=None):
   
 
     def on_close():
+        '''
+        This function is called when the window is closed.
+        It stops the ROS node and closes the window.'''
+
+
         client_node.get_logger().info("[Client_node] Shutting down...")
         client_node.destroy_node()
         rclpy.shutdown()
         root.destroy()  # closes the window and ends mainloop
 
+    # Bind the close event to the on_close function
     root.protocol("WM_DELETE_WINDOW", on_close)  # handles window close
     root.mainloop()
 

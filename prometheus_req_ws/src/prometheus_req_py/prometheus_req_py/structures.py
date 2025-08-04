@@ -2,6 +2,9 @@ import ctypes
 from pyads import PLCTYPE_STRING
 
 class ScrewSlot_ctype(ctypes.Structure):
+    '''
+    Structure representing a screw slot in the PLC.
+    '''
     _pack_ = 1
     _fields_ = [
         ("MAX_IDX_X", ctypes.c_uint16),
@@ -11,6 +14,9 @@ class ScrewSlot_ctype(ctypes.Structure):
     ]
 
 class PLC_STRING_40(ctypes.Structure):
+    '''
+    Structure representing a PLC string of length 40.
+    '''
     _pack_ = 1
     _fields_ = [
         ("length", ctypes.c_uint8),        # length byte
@@ -18,6 +24,9 @@ class PLC_STRING_40(ctypes.Structure):
     ]
 
 class EquipmentStatus_ctype(ctypes.Structure):
+    '''
+    Structure representing the equipment status in the PLC.
+    '''
     _pack_ = 1
     _fields_ = [
         ("emGeneral", ctypes.c_bool),
