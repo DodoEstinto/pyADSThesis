@@ -2,10 +2,10 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>prometheus_req_bringup</name>
-  <version>0.0.0</version>
+  <version>1.0.0</version>
   <description>Package to bring up all nodes needed to interface to equipment</description>
-  <maintainer email="enrico.piccinini@gmail.com">EP</maintainer>
-  <license>TODO: License declaration</license>
+  <maintainer email="davidepaossi@gmail.com">Davide Paossi</maintainer>
+  <license>Custom MIT License</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

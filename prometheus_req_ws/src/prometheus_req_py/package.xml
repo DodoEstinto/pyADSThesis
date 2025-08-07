@@ -4,8 +4,8 @@
   <name>prometheus_req_py</name>
   <version>1.0.0</version>
   <description>Package containing nodes that implements Equipment Requests call </description>
-  <maintainer email="enrico.piccinini@gmail.com">EP</maintainer>
-  <license>TODO: License declaration</license>
+  <maintainer email="davidepaossi@gmail.com">Davide Paossi</maintainer>
+  <license>Custom MIT License</license>
 
   <exec_depend>rclpy</exec_depend>
   <exec_depend>std_msgs</exec_depend>

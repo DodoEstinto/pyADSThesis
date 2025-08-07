@@ -1,5 +1,4 @@
 import ctypes
-from pyads import PLCTYPE_STRING
 
 class ScrewSlot_ctype(ctypes.Structure):
     '''

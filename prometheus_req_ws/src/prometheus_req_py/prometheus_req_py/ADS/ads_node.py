@@ -19,17 +19,19 @@ import pyads # pyright: ignore[reportMissingImports]
 import time
 import ctypes
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy
-
-
+from rclpy.executors import MultiThreadedExecutor
 from copy import deepcopy
 
 from prometheus_req_interfaces.msg import EquipmentStatus,ScrewSlot
 from prometheus_req_interfaces.action import CallFunctionBlock
 from prometheus_req_py.structures import ScrewSlot_ctype,EquipmentStatus_ctype,PLC_STRING_40
-from prometheus_req_py.utils import req_state,get_req_type,get_req_state_msg,msg_type
+from prometheus_req_py.utils import req_state,get_req_state_msg,msg_type
 from std_msgs.msg import String,Empty
 from rclpy.action import ActionServer as rclpyActionServer
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from prometheus_req_py.ADS.FunctionBlocks import screwPickup,positionerRotate
+from functools import partial
+
 class ADS_Node(Node):
     """
     A pyADS node is responsible for establishing and mantaining the connection with the PLC using the pyADS library.
@@ -77,6 +79,10 @@ class ADS_Node(Node):
         self.actionTimerDelay=5 #seconds
         self.lastStatus=None
 
+        
+        self.manageScrewPickup = partial(screwPickup.manageScrewPickup, self)
+        self.managePositionerRotate = partial(positionerRotate.managePositionerRotate, self)
+
         #Get the parameters from the config file
         self.declare_parameter("remote_ip","None")
         self.declare_parameter("remote_ads","None")
@@ -105,9 +111,6 @@ class ADS_Node(Node):
 
         self.test= self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
         
-
-
-
 
     def block_execute_callback(self,goalHandler):
         '''
@@ -322,8 +325,8 @@ class ADS_Node(Node):
         goalHandler.publish_feedback(msg_feed)
         self.get_logger().info("MANDATO!")
         while(not self.errorCheckEvent):
-            rclpy.spin_once(self)
-        #    pass
+            #rclpy.spin_once(self)
+            pass
 
         self.get_logger().info("Uscito!")
         self.errorCheckEvent=False
@@ -348,8 +351,8 @@ class ADS_Node(Node):
         goalHandler.publish_feedback(msg_feed)
         self.get_logger().info("[Debug]Waiting for the picture...")
         while(not self.askPictureEvent):
-            rclpy.spin_once(self)
-        #    pass
+            #rclpy.spin_once(self)
+            pass
         self.askPictureEvent=False
         return self.calculate_picture_offset(self.picture)
         
@@ -364,105 +367,6 @@ class ADS_Node(Node):
 
         """
         return 0.01, 0.9, 0.01  # x, y, theta
-
-    def manageScrewPickupErrorCheck(self,goalHandler):
-        '''
-        Manage the error check for the screw pickup function block.
-        :param goalHandler: The goal handler to manage the request.
-        '''
-        funcState=req_state.ST_ERROR_CHECK
-        self.get_logger().info("[ADS_Node]Checking pickupScrew Error Check...")
-        self.error_check("pickupScrew Error Check",goalHandler)
-        self.plc.write_by_name("GVL_ATS.requests.screwPickup.errorAck",1,pyads.PLCTYPE_BOOL)
-        self.get_logger().info("[ADS_Node]ACK sent for pickupScrew Error Check!") 
-        while(funcState==req_state.ST_ERROR_CHECK):
-            funcState=self.plc.read_by_name(f"GVL_ATS.requests.screwPickup.State",pyads.PLCTYPE_INT)
-        msg="Error check solved" 
-        return msg,funcState
-
-    def manageScrewPickupLogic(self,goalHandler,funcState):
-        self.get_logger().info(f"[DEBUG]Logic funcState:{funcState}")
-        if funcState == req_state.ST_REQ_PENDING | req_state.ST_READY:
-                    self.get_logger().info("[Debug]Waiting for the picture request...")
-                    while(not self.plc.read_by_name(f"GVL_ATS.requests.screwPickup.takePicture",pyads.PLCTYPE_BOOL)):
-                        pass
-                    self.get_logger().info("[Debug]Picture request received, asking for the picture...")
-                    x,y,theta=self.askPicture("Asking Picture",goalHandler)
-                    self.get_logger().info(f"[Debug]Picture received with offsets: x={x}, y={y}, theta={theta}")
-                    self.plc.write_by_name("GVL_ATS.requests.screwPickup.xVisCorrTray",x,pyads.PLCTYPE_REAL)
-                    self.plc.write_by_name("GVL_ATS.requests.screwPickup.yVisCorrTray",y,pyads.PLCTYPE_REAL)
-                    self.plc.write_by_name("GVL_ATS.requests.screwPickup.thetaVisCorrTray",theta,pyads.PLCTYPE_REAL)
-                    self.plc.write_by_name("GVL_ATS.requests.screwPickup.pictureAvailable",1,pyads.PLCTYPE_BOOL)
-
-                    
-                    #waiting for the pickupScrew state to update
-                    while(self.plc.read_by_name(f"GVL_ATS.requests.screwPickup.State",pyads.PLCTYPE_INT)== req_state.ST_REQ_PENDING):
-                        if(time.time()-self.lastTime>self.actionTimerDelay):
-                                self.lastTime=time.time()
-                                feedback_msg = CallFunctionBlock.Feedback()
-                                feedback_msg.msg="Waiting for pickupScrew state to update..."
-                                goalHandler.publish_feedback(feedback_msg)
-
-                    #waiting for the pickup operation to finish
-                    while(self.plc.read_by_name(f"GVL_ATS.requests.screwPickup.State",pyads.PLCTYPE_INT) in (
-                                                                                                            req_state.ST_EXECUTING,
-                                                                                                            req_state.ST_EXECUTING_2,
-                                                                                                            req_state.ST_EXECUTING_3,
-                                                                                                            req_state.ST_EXECUTING_4)):
-                        if(time.time()-self.lastTime>self.actionTimerDelay):
-                                self.lastTime=time.time()
-                                feedback_msg = CallFunctionBlock.Feedback()
-                                feedback_msg.msg="Waiting for the screw pickup..."
-                                goalHandler.publish_feedback(feedback_msg)
-
-
-                    funcState=self.plc.read_by_name(f"GVL_ATS.requests.screwPickup.State",pyads.PLCTYPE_INT)
-                    msg=get_req_state_msg(funcState)
-                    self.get_logger().info(f"[DEBUG]PickupScrew completed with msg: {msg}")
-
-
-    def manageScrewPickup(self,goalHandler) -> tuple[str,int]:
-        '''
-        Manage the individual behaviour of the screw pickup function block.
-        :param goalHandler: The goal handler to manage the request.
-        :return: A tuple containing the message and the state of the function block.
-        '''
-
-        funcState=self.plc.read_by_name("GVL_ATS.requests.screwPickup.State",pyads.PLCTYPE_INT)
-        self.get_logger().info(f"[DEBUG]funcState:{funcState}")
-
-        if(funcState == req_state.ST_READY):
-            self.get_logger().info(f"[DEBUG]Inside the if")
-            self.manageScrewPickupLogic(goalHandler,funcState)
-
-        funcState=self.plc.read_by_name("GVL_ATS.requests.screwPickup.State",pyads.PLCTYPE_INT)
-        self.get_logger().info(f"[DEBUG]funcState:{funcState}")
-
-        while(funcState in (req_state.ST_REQ_PENDING,
-                            req_state.ST_EXECUTING,
-                            req_state.ST_EXECUTING_2,
-                            req_state.ST_EXECUTING_3,
-                            req_state.ST_EXECUTING_4
-                            )):
-            self.get_logger().info(f"[DEBUG]Inside while funcState:{funcState}")
-            
-            if(funcState == req_state.ST_REQ_PENDING):
-                self.get_logger().info(f"[DEBUG]Inside if funcState:{funcState}")
-                self.manageScrewPickupLogic(goalHandler,funcState)
-                self.get_logger().info(f"[DEBUG]Exiting if funcState:{funcState}")
-            funcState= self.plc.read_by_name("GVL_ATS.requests.screwPickup.State",pyads.PLCTYPE_INT)
-        
-        #there is a transaction in this state also in case of error check, we wait for it to finish and analyze the final state.
-        while (funcState == req_state.ST_REQ_COMPLETION):
-            funcState=self.plc.read_by_name("GVL_ATS.requests.screwPickup.State",pyads.PLCTYPE_INT)
-
-        if(funcState == req_state.ST_ERROR_CHECK):
-            msg,funcState=self.manageScrewPickupErrorCheck(goalHandler)
-            self.get_logger().info(f"[DEBUG]Exiting  pickupScrew...")
-        else:
-            msg=get_req_state_msg(funcState)
-        return msg,funcState
-
 
     def manageMrTrolleyVCheckErrorCheck(self,goalHandler):
         '''
@@ -541,30 +445,6 @@ class ADS_Node(Node):
 
         return msg,funcState
 
-    def managePositionerRotate(self,goalHandler) -> tuple[str,int]:
-        '''
-        Manage the individual behaviour of the positioner rotate function block.
-        :param goalHandler: The goal handler to manage the request.
-        :return: A tuple containing the message and the state of the function block.
-        '''
-        #TODO:controllare che state serva veramente (non penso)
-        funcState=self.plc.read_by_name("GVL_ATS.requests.positionerRotate.State",pyads.PLCTYPE_INT)
-        self.get_logger().info(f"funcState:{funcState}")
-        #After the execution, we check if there is an error check to be managed.
-        if(funcState == req_state.ST_ERROR_CHECK):
-            self.get_logger().info("[ADS_Node]Checking Positioner Rotate...")
-
-            self.error_check("PositionerRotate Error Check",goalHandler)
-            self.plc.write_by_name("GVL_ATS.requests.positionerRotate.errorAck",1,pyads.PLCTYPE_BOOL)
-            self.get_logger().info("[ADS_Node]ACK sent for Positioner Rotate Error Check!") 
-            #Wait for the error check to be solved.
-            while(funcState==req_state.ST_ERROR_CHECK):
-                funcState=self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.State",pyads.PLCTYPE_INT)
-            msg="Error check solved"
-        else:
-            msg=get_req_state_msg(funcState)
-
-        return msg,funcState
     
     def manageLoadTray(self,goalHandler) -> tuple[str,int]:
         '''
@@ -679,7 +559,9 @@ class ADS_Node(Node):
 def main(args=None):
     rclpy.init(args=args)
     pyads_node =  ADS_Node()
-    rclpy.spin(pyads_node)
+    executor = MultiThreadedExecutor()
+    executor.add_node(pyads_node)
+    executor.spin()
     pyads_node.destroy_node()
     rclpy.shutdown()
 
