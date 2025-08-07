@@ -24,12 +24,11 @@ from copy import deepcopy
 
 from prometheus_req_interfaces.msg import EquipmentStatus,ScrewSlot
 from prometheus_req_interfaces.action import CallFunctionBlock
-from prometheus_req_py.structures import ScrewSlot_ctype,EquipmentStatus_ctype,PLC_STRING_40
+from prometheus_req_py.structures import EquipmentStatus_ctype
 from prometheus_req_py.utils import req_state,get_req_state_msg,msg_type
-from std_msgs.msg import String,Empty
+from std_msgs.msg import Empty
 from rclpy.action import ActionServer as rclpyActionServer
-from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
-from prometheus_req_py.ADS.FunctionBlocks import screwPickup,positionerRotate,loadTray,depositTray
+from prometheus_req_py.ADS.FunctionBlocks import *
 import prometheus_req_py.ADS.checks as checks
 from functools import partial
 
@@ -45,8 +44,6 @@ class ADS_Node(Node):
         super().__init__('ads_node')
         #self.init_s_time=time.time_ns()
         #always drop old msg in case of a slowdonw. Keep the newest.
-        #cg1 = MutuallyExclusiveCallbackGroup()
-        #cg2 = MutuallyExclusiveCallbackGroup()
         self.publisher_ = self.create_publisher(EquipmentStatus, 'state', 1)
         timer_period = 1  # seconds
         self.actionServer= rclpyActionServer(self,CallFunctionBlock,
@@ -86,6 +83,8 @@ class ADS_Node(Node):
         self.managePositionerRotate = partial(positionerRotate.managePositionerRotate, self)
         self.manageLoadTray = partial(loadTray.manageLoadTray, self)
         self.manageDepositTray = partial(depositTray.manageDepositTray, self)
+        self.manageMrTrolleyVCheck = partial(mrTrolleyVCheck.manageMrTrolleyVCheck, self)
+        
 
         # Initialize the checks methods. Treat them as methods of the ADS_Node class.
         self.checkPositionerRotate = partial(checks.checkPositionerRotate, self)
