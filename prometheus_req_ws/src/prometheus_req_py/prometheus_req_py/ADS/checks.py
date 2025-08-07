@@ -1,4 +1,6 @@
 
+import pyads
+
 def checkPositionerRotate(self) -> tuple[bool,str]:
     '''
     Check if the positioner is in the right position.
