@@ -1,4 +1,4 @@
-from prometheus_req_py.utils import req_state,get_req_state_msg
+from prometheus_req_py.ADS.utils import req_state,get_req_state_msg
 import pyads
 
 def managePositionerRotate(self,goalHandler) -> tuple[str,int]:

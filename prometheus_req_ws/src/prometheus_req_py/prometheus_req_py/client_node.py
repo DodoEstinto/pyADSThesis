@@ -18,13 +18,11 @@ from rclpy.action import ActionClient
 from copy import deepcopy
 from prometheus_req_interfaces.msg import EquipmentStatus
 from prometheus_req_interfaces.action import CallFunctionBlock
-from prometheus_req_py.utils import OkDialog
+from prometheus_req_py.ADS.utils import OkDialog,msg_type
 import tkinter as tk
 from tkinter import messagebox,simpledialog
 from std_msgs.msg import Empty
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy
-from prometheus_req_py.utils import msg_type
-
 
 
 class Client_Node(Node):
