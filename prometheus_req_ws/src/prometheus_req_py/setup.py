@@ -1,7 +1,6 @@
 from setuptools import find_packages, setup
 
 package_name = 'prometheus_req_py'
-bringup_package_name= 'prometheus_req_bringup'
 
 setup(
     name=package_name,
