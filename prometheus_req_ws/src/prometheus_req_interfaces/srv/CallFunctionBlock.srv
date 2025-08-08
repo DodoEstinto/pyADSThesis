@@ -1,5 +1,0 @@
-string function_block_name
----
-bool result
-int16 state
-string msg
