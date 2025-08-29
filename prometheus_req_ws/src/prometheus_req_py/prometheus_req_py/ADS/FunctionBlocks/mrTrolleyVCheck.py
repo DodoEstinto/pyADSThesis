@@ -1,4 +1,4 @@
-from prometheus_req_py.ADS.utils import req_state,get_req_state_msg,msg_type
+from prometheus_req_py.ADS.utils import reqState,getReqStateMsg,msgType
 import pyads  
 import time
 from prometheus_req_interfaces.action import CallFunctionBlock

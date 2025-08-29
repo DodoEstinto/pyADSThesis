@@ -7,7 +7,7 @@ float32 float_param2
 float32 float_param3
 int16 int_param1
 ---
-bool result
+bool success
 int16 state
 string msg
 ---

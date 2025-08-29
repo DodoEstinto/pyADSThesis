@@ -19,7 +19,7 @@ class reqState(IntEnum):
     ST_EXECUTING_3=110,
     ST_EXECUTING_4=120
 
-class msg_type(IntEnum):
+class msgType(IntEnum):
     '''
     Enum representing the type of message sent via action feedback.
     '''

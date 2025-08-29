@@ -24,7 +24,7 @@ from tkinter import messagebox,simpledialog
 from std_msgs.msg import Empty
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy
 from functools import partial
-from prometheus_req_py.prometheus_req_py.Client.GUI import Client_GUI
+from prometheus_req_py.Client.GUI import client_GUI
 
 class Client_Node(Node):
     '''
@@ -62,7 +62,7 @@ class Client_Node(Node):
             self.get_logger().info(f"[Client_node] Done")
         else:
             self.get_logger().info(f"[Client_node] Function Block already called, waiting for response...")
-            self.update_response_text("A function Block has been already called, waiting for its response...", isResult=False)
+            self.updateResponseText("A function Block has been already called, waiting for its response...", isResult=False)
              
     def goal_response_callback(self,future):
         '''
@@ -76,12 +76,12 @@ class Client_Node(Node):
         #this has been added for anomaly robusteness.
         if not goalHandler.accepted:
             self.get_logger().info(f"[CLIENT NODE] Action response:Not accepted")
-            self.update_response_text("Command not accepted", isResult=False)
+            self.updateResponseText("Command not accepted", isResult=False)
             self.functionBlockCalled=False
             return
         
         self.get_logger().info(f"[CLIENT NODE] Action response: Accepted")
-        self.update_response_text("Command accepted", isResult=False)
+        self.updateResponseText("Command accepted", isResult=False)
 
         #Ask for the result.
         self.send_goal_future= goalHandler.get_result_async()
@@ -97,8 +97,8 @@ class Client_Node(Node):
         self.functionBlockMsg=future.result().result.msg
         self.functionBlockCalled=False
   
-        self.update_labels()  #TODO: needed?
-        self.update_response_text(self.functionBlockMsg, isResult=True)
+        self.updateLabels()  #TODO: needed?
+        self.updateResponseText(self.functionBlockMsg, isResult=True)
     
     def goal_feedback_callback(self,feedback):
         '''
@@ -110,23 +110,23 @@ class Client_Node(Node):
         #Refer to msg_type documentation for more informations about it
         match msgType:
             case msg_type.ERROR_CHECK:
-                self.update_response_text("Error check in progress...", isResult=False)
+                self.updateResponseText("Error check in progress...", isResult=False)
                 _=OkDialog(self.root, title="Error Check", message=self.functionBlockMsg)
                 self.errorCheckPub.publish(Empty())
             case msg_type.ASKING_PICTURE:
-                self.update_response_text("Asking a photo...", isResult=False)
+                self.updateResponseText("Asking a photo...", isResult=False)
                 _=OkDialog(self.root, title="Take Picture", message="Press ok to take a picture!")
                 self.imagePub.publish(Empty())
             case _:
-                self.update_labels() #TODO: needed?
-                self.update_response_text(self.functionBlockMsg, isResult=False)
+                self.updateLabels() #TODO: needed?
+                self.updateResponseText(self.functionBlockMsg, isResult=False)
         
     def __init__(self,root):
         super().__init__('client_node')
-        self.init_GUI = partial(Client_GUI.init_GUI,self)
-        self.init_labels = partial(Client_GUI.init_labels,self)
-        self.update_labels = partial(Client_GUI.update_labels,self)
-        self.update_response_text = partial(Client_GUI.update_response_text,self)
+        self.init_GUI = partial(client_GUI.init_GUI,self)
+        self.initLabels = partial(client_GUI.initLabels,self)
+        self.updateLabels = partial(client_GUI.updateLabels,self)
+        self.updateResponseText = partial(client_GUI.updateResponseText,self)
         self.state=EquipmentStatus()
         self.subscription = self.create_subscription(
             EquipmentStatus,
@@ -173,7 +173,7 @@ class Client_Node(Node):
         #Testing code
         #self.get_logger().info("[Client_node]Receinving:"+str(msg.active_state_fsm_string))
         self.state=deepcopy(msg)
-        self.update_labels()
+        self.updateLabels()
 
 
 
