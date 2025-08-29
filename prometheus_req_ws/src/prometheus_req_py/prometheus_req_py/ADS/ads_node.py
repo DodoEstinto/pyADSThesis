@@ -312,6 +312,7 @@ class ADS_Node(Node):
 
     def calculate_picture_offset(self,picture):
         """
+        TODO: move to client node!
         Dummy function, as the actual implementation depends on the specific requirements of the application.
         Calculate the offset of the picture.
         :param picture: The picture to calculate the offset for.

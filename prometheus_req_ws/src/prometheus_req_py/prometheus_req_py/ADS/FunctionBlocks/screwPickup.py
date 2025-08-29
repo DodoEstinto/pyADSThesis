@@ -7,9 +7,11 @@ def manageScrewPickupErrorCheck(self,goalHandler):
     '''
     Manage the error check for the screw pickup function block.
     :param goalHandler: The goal handler to manage the request.
+    TODO: return
     '''
     funcState=req_state.ST_ERROR_CHECK
     self.get_logger().info("[ADS_Node]Checking pickupScrew Error Check...")
+    #this refers to the ads_node.error_check(...) method
     self.error_check("pickupScrew Error Check",goalHandler)
     self.plc.write_by_name("GVL_ATS.requests.screwPickup.errorAck",1,pyads.PLCTYPE_BOOL)
     self.get_logger().info("[ADS_Node]ACK sent for pickupScrew Error Check!") 
@@ -19,12 +21,17 @@ def manageScrewPickupErrorCheck(self,goalHandler):
     return msg,funcState
 
 def manageScrewPickupLogic(self,goalHandler,funcState):
+    '''
+    TODO: complete the docstring
+    '''
+
     self.get_logger().info(f"[DEBUG]Logic funcState:{funcState}")
     if funcState == req_state.ST_REQ_PENDING | req_state.ST_READY:
                 self.get_logger().info("[Debug]Waiting for the picture request...")
                 while(not self.plc.read_by_name(f"GVL_ATS.requests.screwPickup.takePicture",pyads.PLCTYPE_BOOL)):
                     pass
                 self.get_logger().info("[Debug]Picture request received, asking for the picture...")
+                #this refers to the ads_node.askPicture(...) method
                 x,y,theta=self.askPicture("Asking Picture",goalHandler)
                 self.get_logger().info(f"[Debug]Picture received with offsets: x={x}, y={y}, theta={theta}")
                 self.plc.write_by_name("GVL_ATS.requests.screwPickup.xVisCorrTray",x,pyads.PLCTYPE_REAL)

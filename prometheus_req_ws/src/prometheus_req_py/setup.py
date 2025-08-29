@@ -21,7 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'ads_node = prometheus_req_py.ADS.ads_node:main',
-            'client_node = prometheus_req_py.client_node:main'
+            'client_node = prometheus_req_py.Client.client_node:main'
         ],
     },
 )
