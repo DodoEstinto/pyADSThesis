@@ -18,7 +18,7 @@ from rclpy.action import ActionClient
 from copy import deepcopy
 from prometheus_req_interfaces.msg import EquipmentStatus
 from prometheus_req_interfaces.action import CallFunctionBlock
-from prometheus_req_py.ADS.utils import OkDialog,msg_type
+from prometheus_req_py.ADS.utils import OkDialog,msgType
 import tkinter as tk
 from tkinter import messagebox,simpledialog
 from std_msgs.msg import Empty
@@ -92,7 +92,7 @@ class Client_Node(Node):
         '''
         This function is called when the action client receive a result.
         '''
-        self.functionBlockResult=future.result().result.result
+        self.functionBlockResult=future.result().result.success
         self.functionBlockState=future.result().result.state
         self.functionBlockMsg=future.result().result.msg
         self.functionBlockCalled=False
@@ -104,16 +104,16 @@ class Client_Node(Node):
         '''
         This function is called when the action client receive a feedback.
         '''
-        msgType=feedback.feedback.msg_type
+        feedbackMsgType=feedback.feedback.msg_type
         self.functionBlockMsg=feedback.feedback.msg
         #Based on the msg type manage the feedback differently.
-        #Refer to msg_type documentation for more informations about it
-        match msgType:
-            case msg_type.ERROR_CHECK:
+        #Refer to msgType documentation for more informations about it
+        match feedbackMsgType:
+            case msgType.ERROR_CHECK:
                 self.updateResponseText("Error check in progress...", isResult=False)
                 _=OkDialog(self.root, title="Error Check", message=self.functionBlockMsg)
                 self.errorCheckPub.publish(Empty())
-            case msg_type.ASKING_PICTURE:
+            case msgType.ASKING_PICTURE:
                 self.updateResponseText("Asking a photo...", isResult=False)
                 _=OkDialog(self.root, title="Take Picture", message="Press ok to take a picture!")
                 self.imagePub.publish(Empty())

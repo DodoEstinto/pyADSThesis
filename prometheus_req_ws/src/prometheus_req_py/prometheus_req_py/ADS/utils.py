@@ -84,7 +84,7 @@ def publishFeedback(self,goalHandler, msg: str, actionTimerDelay: float = 0.5):
     if(time.time()-self.lastTime>self.actionTimerDelay):
             self.lastTime=time.time()
             feedback_msg = CallFunctionBlock.Feedback()
-            feedback_msg.msg_type=msg_type.NORMAL
+            feedback_msg.msg_type=msgType.NORMAL
             feedback_msg.msg=msg
             goalHandler.publish_feedback(feedback_msg)
 

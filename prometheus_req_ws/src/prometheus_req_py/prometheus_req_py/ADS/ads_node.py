@@ -285,7 +285,7 @@ class ADS_Node(Node):
         :param goalHandler: The goal handler to publish the feedback.
         '''
         msg_feed=CallFunctionBlock.Feedback()
-        msg_feed.msgType=msgType.ERROR_CHECK
+        msg_feed.msg_type=msgType.ERROR_CHECK
         msg_feed.msg=err_msg
         goalHandler.publish_feedback(msg_feed)
         self.get_logger().info("MANDATO!")
