@@ -25,7 +25,7 @@ from copy import deepcopy
 from prometheus_req_interfaces.msg import EquipmentStatus,ScrewSlot
 from prometheus_req_interfaces.action import CallFunctionBlock
 from prometheus_req_py.ADS.structures import EquipmentStatus_ctype
-from prometheus_req_py.ADS.utils import req_state,get_req_state_msg,msg_type
+from prometheus_req_py.ADS.utils import req_state,get_req_state_msg,msg_type,publishFeedback
 from std_msgs.msg import Empty
 from rclpy.action import ActionServer as rclpyActionServer
 from prometheus_req_py.ADS.FunctionBlocks import *
@@ -88,6 +88,7 @@ class ADS_Node(Node):
 
 
         self.askPicture= partial(mrTrolleyVCheck.askPicture, self)
+        self.publishFeedback= partial(publishFeedback, self)
         
 
         # Initialize the checks methods. Treat them as methods of the ADS_Node class.
@@ -96,8 +97,6 @@ class ADS_Node(Node):
         self.checkScrewPickup = partial(checks.checkScrewPickup, self)
 
         #Get the parameters from the config file
-        self.declare_parameter("remote_ip","None")
-        self.declare_parameter("remote_ads","None")
         self.declare_parameter("CLIENT_NETID","None")
         self.declare_parameter("CLIENT_IP","None")
         self.declare_parameter("PLC_IP","None")
@@ -158,8 +157,7 @@ class ADS_Node(Node):
         actualState=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT)
         test=get_req_state_msg(actualState)
         self.get_logger().info(f"[ADS_NODE]State: {actualState}@@@{test}")
-        feedback_msg.msg_type= msg_type.NORMAL
-        feedback_msg.msg=get_req_state_msg(actualState)
+        self.publishFeedback(goalHandler, get_req_state_msg(actualState),0)
         if(actualState == req_state.ST_READY):
             self.get_logger().info(f"[DEBUG]Ready")
             check,msg=self.runChecks(functionBlockName)
@@ -167,9 +165,7 @@ class ADS_Node(Node):
             #if the preconditions are not met, the goal is aborted.
             if(not check):
                 self.get_logger().info(f"[DEBUG]Checks failed for {functionBlockName}, aborting goal.")
-                feedback_msg.msg_type=msg_type.NORMAL
-                feedback_msg.msg=msg
-                goalHandler.publish_feedback(feedback_msg)
+                self.publishFeedback(goalHandler,msg,0)
                 self.get_logger().info(f"[DEBUG]About to abort")
                 goalHandler.abort()
                 result.result=False
@@ -192,15 +188,7 @@ class ADS_Node(Node):
                                                                                                              req_state.ST_EXECUTING_2,
                                                                                                              req_state.ST_EXECUTING_3,
                                                                                                              req_state.ST_EXECUTING_4)):
-                #self.get_logger().info(f"[DEBUG]Function Block {functionBlockName} is executing...")
-                if(time.time()-self.lastTime>self.actionTimerDelay):
-                    self.lastTime=time.time()
-                    #self.get_logger().info(f"[DEBUG]Function Block {functionBlockName} is still executing, sending feedback...")
-                    feedback_msg.msg_type=msg_type.NORMAL
-                    feedback_msg.msg="Executing..."
-                    #self.get_logger().info(f"[DEBUG]Function Block {functionBlockName} is still executing, sending feedback2...")
-                    goalHandler.publish_feedback(feedback_msg)
-                    #self.get_logger().info(f"[DEBUG]Function Block {functionBlockName} is still executing, sent feedback.")
+                self.publishFeedback(goalHandler, f"Function Block {functionBlockName} is executing...", self.actionTimerDelay)
             #self.get_logger().info(f"[DEBUG]Function Block {functionBlockName} executed, waiting for the result...")
             
             '''
@@ -215,9 +203,7 @@ class ADS_Node(Node):
             '''
             self.get_logger().info(f"[DEBUG]Function Block {functionBlockName} executed.")
             actualState=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT)
-            feedback_msg.msg_type=msg_type.NORMAL
-            feedback_msg.msg="Handling the building block..."
-            goalHandler.publish_feedback(feedback_msg)
+            self.publishFeedback(goalHandler, f"Handling the function Block {functionBlockName}",0)
             self.get_logger().info(f"[ADS_Node]: Managing function block {functionBlockName} with state {actualState} and result {result.result}")
             match (functionBlockName):
                 case "positionerRotate":

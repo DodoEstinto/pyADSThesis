@@ -1,6 +1,8 @@
 
 from enum import IntEnum
 import tkinter as tk
+import time
+from prometheus_req_interfaces.action import CallFunctionBlock
 class req_state(IntEnum):
     '''
     Enum representing the possible states of the FSM.
@@ -69,3 +71,20 @@ def get_req_state_msg(state: int) -> str:
         
     }
     return state_mapping.get(state,("State not mapped!"))
+
+
+def publishFeedback(self,goalHandler, msg: str, actionTimerDelay: float = 0.5):
+    '''
+    Publishes feedback to the action server.
+    Args:
+        goalHandler: The goal handler for the action server.
+        msg (str): The message to publish as feedback.
+        actionTimerDelay (float): Delay between feedback messages in seconds.
+    '''
+    if(time.time()-self.lastTime>self.actionTimerDelay):
+            self.lastTime=time.time()
+            feedback_msg = CallFunctionBlock.Feedback()
+            feedback_msg.msg_type=msg_type.NORMAL
+            feedback_msg.msg=msg
+            goalHandler.publish_feedback(feedback_msg)
+
