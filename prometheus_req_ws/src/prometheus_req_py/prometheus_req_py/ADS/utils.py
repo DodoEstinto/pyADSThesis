@@ -3,7 +3,7 @@ from enum import IntEnum
 import tkinter as tk
 import time
 from prometheus_req_interfaces.action import CallFunctionBlock
-class req_state(IntEnum):
+class reqState(IntEnum):
     '''
     Enum representing the possible states of the FSM.
     '''
@@ -48,7 +48,7 @@ class OkDialog(tk.Toplevel):
         self.result = True
         self.destroy()
 
-def get_req_state_msg(state: int) -> str:
+def getReqStateMsg(state: int) -> str:
     '''
     Returns a default message corresponding to the given state.
     Args:

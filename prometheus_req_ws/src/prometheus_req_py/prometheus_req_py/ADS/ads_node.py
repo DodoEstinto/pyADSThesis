@@ -25,7 +25,7 @@ from copy import deepcopy
 from prometheus_req_interfaces.msg import EquipmentStatus,ScrewSlot
 from prometheus_req_interfaces.action import CallFunctionBlock
 from prometheus_req_py.ADS.structures import EquipmentStatus_ctype
-from prometheus_req_py.ADS.utils import req_state,get_req_state_msg,msg_type,publishFeedback
+from prometheus_req_py.ADS.utils import reqState,getReqStateMsg,msgType,publishFeedback
 from std_msgs.msg import Empty
 from rclpy.action import ActionServer as rclpyActionServer
 from prometheus_req_py.ADS.FunctionBlocks import *
@@ -45,7 +45,7 @@ class ADS_Node(Node):
         #self.init_s_time=time.time_ns()
         #always drop old msg in case of a slowdonw. Keep the newest.
         self.publisher_ = self.create_publisher(EquipmentStatus, 'state', 1)
-        timer_period = 1  # seconds
+        timerPeriod = 1  # seconds
         self.actionServer= rclpyActionServer(self,CallFunctionBlock,
                                              "CallFunctionBlock",
                                              self.block_execute_callback,)
@@ -54,14 +54,14 @@ class ADS_Node(Node):
             reliability=QoSReliabilityPolicy.RELIABLE
         )
         # Create a subscription to the error check action
-        self.ads_error_check_sub= self.create_subscription(
+        self.ADSErrorCheckSub= self.create_subscription(
             Empty,
             'errorCheckAck',
             self.error_check_callback,
             qos_profile=qos,
         )
         # Create a subscription to the ask picture action
-        self.ads_photo_sub= self.create_subscription(
+        self.ADSPhotoSub= self.create_subscription(
             Empty,
             'takePicture',
             self.askPicture_callback,
@@ -72,7 +72,7 @@ class ADS_Node(Node):
         self.picture= None
         self.errorCheckEvent = False
         self.askPictureEvent = False
-        self.timer = self.create_timer(timer_period, self.timer_callback)
+        self.timer = self.create_timer(timerPeriod, self.timer_callback)
         self.lastTime=time.time()
         self.actionTimerDelay=5 #seconds
         self.lastStatus=None
@@ -109,7 +109,7 @@ class ADS_Node(Node):
         pyads.open_port()
         pyads.set_local_address(CLIENT_NETID)
 
-        #change  based on the credential you are connecting to. To run only the first time.
+        #change based on the credential you are connecting to. To run only the first time.
         if(False):
             temp=pyads.add_route_to_plc(CLIENT_NETID,CLIENT_IP,PLC_IP,"Administrator","1",route_name="pyADS")
         pyads.close_port()
@@ -117,10 +117,9 @@ class ADS_Node(Node):
         self.plc= pyads.Connection(PLC_NET_ID, pyads.PORT_TC3PLC1, PLC_IP)
         self.plc.open()
         
-
         statusMemory=pyads.NotificationAttrib(ctypes.sizeof(EquipmentStatus_ctype))#ctypes.sizeof(EquipmentStatus_ctype)
 
-        self.test= self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
+        self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
         
 
     def block_execute_callback(self,goalHandler):
@@ -143,22 +142,22 @@ class ADS_Node(Node):
             self.get_logger().info(f"[ADS_Node] Function Block {goalHandler.request.function_block_name} not allowed! Allowed function blocks are: {allowedFunctionBlocks}")
             goalHandler.abort()
             result=CallFunctionBlock.Result()
-            result.result=False
+            result.success=False
             result.msg=f"Function Block {goalHandler.request.function_block_name} not allowed! Allowed function blocks are: {allowedFunctionBlocks}"
             result.state=999
             return result
 
         
-        feedback_msg = CallFunctionBlock.Feedback()
+
         result=CallFunctionBlock.Result()
         
         self.get_logger().info(f"[DEBUG]GVL_ATS.requests.{functionBlockName}.request")
         
         actualState=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT)
-        test=get_req_state_msg(actualState)
-        self.get_logger().info(f"[ADS_NODE]State: {actualState}@@@{test}")
-        self.publishFeedback(goalHandler, get_req_state_msg(actualState),0)
-        if(actualState == req_state.ST_READY):
+        debugState=getReqStateMsg(actualState)
+        self.get_logger().info(f"[ADS_NODE]State: {actualState}@@@{debugState}")
+        self.publishFeedback(goalHandler, getReqStateMsg(actualState),0)
+        if(actualState == reqState.ST_READY):
             self.get_logger().info(f"[DEBUG]Ready")
             check,msg=self.runChecks(functionBlockName)
             self.get_logger().info(f"[DEBUG]Checks for {functionBlockName} returned {check} with message: {msg}")
@@ -168,7 +167,7 @@ class ADS_Node(Node):
                 self.publishFeedback(goalHandler,msg,0)
                 self.get_logger().info(f"[DEBUG]About to abort")
                 goalHandler.abort()
-                result.result=False
+                result.success=False
                 result.msg=msg
                 result.state=actualState
                 self.get_logger().info(f"[DEBUG] Goal aborted due to checks failure. -> {msg}")
@@ -180,14 +179,14 @@ class ADS_Node(Node):
             #Send the request to the PLC
             self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.request",1,pyads.PLCTYPE_BOOL)
 
-            while(self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT) == req_state.ST_READY):
+            while(self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT) == reqState.ST_READY):
                 pass
 
             #Wait the completion of the task
-            while(self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT) in (req_state.ST_EXECUTING,
-                                                                                                             req_state.ST_EXECUTING_2,
-                                                                                                             req_state.ST_EXECUTING_3,
-                                                                                                             req_state.ST_EXECUTING_4)):
+            while(self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT) in (reqState.ST_EXECUTING,
+                                                                                                             reqState.ST_EXECUTING_2,
+                                                                                                             reqState.ST_EXECUTING_3,
+                                                                                                             reqState.ST_EXECUTING_4)):
                 self.publishFeedback(goalHandler, f"Function Block {functionBlockName} is executing...", self.actionTimerDelay)
             #self.get_logger().info(f"[DEBUG]Function Block {functionBlockName} executed, waiting for the result...")
             
@@ -197,14 +196,14 @@ class ADS_Node(Node):
             while(self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.Busy",pyads.PLCTYPE_BOOL)):
                 if(time.time()-self.lastTime>self.actionTimerDelay):
                     self.lastTime=time.time()
-                    feedback_msg.msg_type=msg_type.NORMAL
+                    feedback_msg.msgType=msgType.NORMAL
                     feedback_msg.msg="Busy! Waiting..."
                     goalHandler.publish_feedback(feedback_msg)
             '''
             self.get_logger().info(f"[DEBUG]Function Block {functionBlockName} executed.")
             actualState=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT)
             self.publishFeedback(goalHandler, f"Handling the function Block {functionBlockName}",0)
-            self.get_logger().info(f"[ADS_Node]: Managing function block {functionBlockName} with state {actualState} and result {result.result}")
+            self.get_logger().info(f"[ADS_Node]: Managing function block {functionBlockName} with state {actualState} and result {result.success}")
             match (functionBlockName):
                 case "positionerRotate":
                         result.msg,result.state=self.managePositionerRotate(goalHandler)
@@ -220,13 +219,13 @@ class ADS_Node(Node):
 
 
             goalHandler.succeed()
-            result.result=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.Done",pyads.PLCTYPE_BOOL)
-            self.get_logger().info(f"[DEBUG] Goal Finished {result.result} with message: {result.msg} and state: {result.state}.| Types: {type(result.result)}, {type(result.msg)}, {type(result.state)}")
+            result.success=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.Done",pyads.PLCTYPE_BOOL)
+            self.get_logger().info(f"[DEBUG] Goal Finished {result.success} with message: {result.msg} and state: {result.state}.| Types: {type(result.success)}, {type(result.msg)}, {type(result.state)}")
             return result
         else:
             self.get_logger().info(f"[DEBUG]Not Ready")
             goalHandler.abort()
-            result.result=False
+            result.success=False
             result.msg="Machine not ready! Please wait for the machine to be ready"
             result.state=actualState
             return result
@@ -286,10 +285,11 @@ class ADS_Node(Node):
         :param goalHandler: The goal handler to publish the feedback.
         '''
         msg_feed=CallFunctionBlock.Feedback()
-        msg_feed.msg_type=msg_type.ERROR_CHECK
+        msg_feed.msgType=msgType.ERROR_CHECK
         msg_feed.msg=err_msg
         goalHandler.publish_feedback(msg_feed)
         self.get_logger().info("MANDATO!")
+        #TODO: mettere semaforo
         while(not self.errorCheckEvent):
             #rclpy.spin_once(self)
             pass
@@ -373,7 +373,7 @@ class ADS_Node(Node):
         :param _: Unused paramenter.
         '''
         #WARNING: if you change the type of the notification, you have also to update it in the statusMemory init!
-        handle,timestamp,value=self.plc.parse_notification(notification,EquipmentStatus_ctype)
+        _,_,value=self.plc.parse_notification(notification,EquipmentStatus_ctype)
         statusUpdate=self.cpy_to_equipment_status_msg(value)
         self.publisher_.publish(statusUpdate)
         self.lastStatus=deepcopy(statusUpdate)
