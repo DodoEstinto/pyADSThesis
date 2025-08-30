@@ -44,7 +44,7 @@ class ADS_Node(Node):
         super().__init__('ads_node')
         #self.init_s_time=time.time_ns()
         #always drop old msg in case of a slowdonw. Keep the newest.
-        self.publisher_ = self.create_publisher(EquipmentStatus, 'state', 1)
+        self.publisher = self.create_publisher(EquipmentStatus, 'state', 1)
         timerPeriod = 1  # seconds
         self.actionServer= rclpyActionServer(self,CallFunctionBlock,
                                              "CallFunctionBlock",
@@ -98,11 +98,9 @@ class ADS_Node(Node):
 
         #Get the parameters from the config file
         self.declare_parameter("CLIENT_NETID","None")
-        self.declare_parameter("CLIENT_IP","None")
         self.declare_parameter("PLC_IP","None")
         self.declare_parameter("PLC_NET_ID","None")
         CLIENT_NETID = self.get_parameter('CLIENT_NETID').value
-        CLIENT_IP = self.get_parameter('CLIENT_IP').value
         PLC_IP= self.get_parameter('PLC_IP').value
         PLC_NET_ID = self.get_parameter('PLC_NET_ID').value
 
@@ -111,7 +109,9 @@ class ADS_Node(Node):
 
         #change based on the credential you are connecting to. To run only the first time.
         if(False):
-            temp=pyads.add_route_to_plc(CLIENT_NETID,CLIENT_IP,PLC_IP,"Administrator","1",route_name="pyADS")
+            self.declare_parameter("CLIENT_IP","None")
+            CLIENT_IP = self.get_parameter('CLIENT_IP').value
+            pyads.add_route_to_plc(CLIENT_NETID,CLIENT_IP,PLC_IP,"Administrator","1",route_name="pyADS")
         pyads.close_port()
 
         self.plc= pyads.Connection(PLC_NET_ID, pyads.PORT_TC3PLC1, PLC_IP)
@@ -243,6 +243,7 @@ class ADS_Node(Node):
             case "loadTray":
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.reqToLoad",req.bool_param1,pyads.PLCTYPE_BOOL)
             case "mrTrolleyVCheck":
+                #TODO: testare e riabilitare
                 #self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.xVisCorrTray",req.float_param1,pyads.PLCTYPE_REAL)
                 #self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.yVisCorrTray",req.float_param2,pyads.PLCTYPE_REAL)
                 #self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.thetaVisCorrTray",req.float_param3,pyads.PLCTYPE_REAL)
@@ -278,20 +279,19 @@ class ADS_Node(Node):
         self.errorCheckEvent=True
 
 
-    def error_check(self,err_msg:str,goalHandler) -> None:
+    def error_check(self,errMsg:str,goalHandler) -> None:
         '''
         Handle the error check action.
-        :param err_msg: The error message to send to the client.
+        :param errMsg: The error message to send to the client.
         :param goalHandler: The goal handler to publish the feedback.
         '''
-        msg_feed=CallFunctionBlock.Feedback()
-        msg_feed.msg_type=msgType.ERROR_CHECK
-        msg_feed.msg=err_msg
-        goalHandler.publish_feedback(msg_feed)
+        msgFeed=CallFunctionBlock.Feedback()
+        msgFeed.msg_type=msgType.ERROR_CHECK
+        msgFeed.msg=errMsg
+        goalHandler.publish_feedback(msgFeed)
         self.get_logger().info("MANDATO!")
         #TODO: mettere semaforo
         while(not self.errorCheckEvent):
-            #rclpy.spin_once(self)
             pass
 
         self.get_logger().info("Uscito!")
@@ -375,7 +375,7 @@ class ADS_Node(Node):
         #WARNING: if you change the type of the notification, you have also to update it in the statusMemory init!
         _,_,value=self.plc.parse_notification(notification,EquipmentStatus_ctype)
         statusUpdate=self.cpy_to_equipment_status_msg(value)
-        self.publisher_.publish(statusUpdate)
+        self.publisher.publish(statusUpdate)
         self.lastStatus=deepcopy(statusUpdate)
 
 
@@ -390,7 +390,7 @@ class ADS_Node(Node):
             statusUpdate=self.cpy_to_equipment_status_msg(status)
         else:
             statusUpdate=self.lastStatus
-        self.publisher_.publish(statusUpdate)
+        self.publisher.publish(statusUpdate)
         
 
 def main(args=None):
