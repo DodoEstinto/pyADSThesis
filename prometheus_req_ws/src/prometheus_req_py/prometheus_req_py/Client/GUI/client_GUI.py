@@ -212,3 +212,6 @@ def updateResponseText(self, text:str, isResult:bool=False):
         self.responseText.insert('1.0', f"[Status] {text}")
     self.responseText.configure(state='disabled')
 
+
+
+

@@ -16,9 +16,10 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from copy import deepcopy
-from prometheus_req_interfaces.msg import EquipmentStatus
+from prometheus_req_interfaces.msg import EquipmentStatus, Offset
 from prometheus_req_interfaces.action import CallFunctionBlock
-from prometheus_req_py.ADS.utils import OkDialog,msgType
+from prometheus_req_py.ADS.utils import msgType
+from prometheus_req_py.Client.utils import OkDialog
 import tkinter as tk
 from tkinter import messagebox,simpledialog
 from std_msgs.msg import Empty
@@ -116,7 +117,13 @@ class Client_Node(Node):
             case msgType.ASKING_PICTURE:
                 self.updateResponseText("Asking a photo...", isResult=False)
                 _=OkDialog(self.root, title="Take Picture", message="Press ok to take a picture!")
-                self.imagePub.publish(Empty())
+                offset=self.calculate_picture_offset()
+                offsetMsg=Offset()
+                offsetMsg.x=offset[0]
+                offsetMsg.y=offset[1]
+                offsetMsg.theta=offset[2]
+                self.offsetPub.publish(offsetMsg)
+                self.get_logger().info(f"[Client_node] Published offset: {offsetMsg}")
             case _:
                 self.updateLabels() #TODO: needed?
                 self.updateResponseText(self.functionBlockMsg, isResult=False)
@@ -146,9 +153,9 @@ class Client_Node(Node):
             qos_profile=qos
         )
 
-        self.imagePub = self.create_publisher(
-            Empty,
-            'takePicture',
+        self.offsetPub = self.create_publisher(
+            Offset,
+            'offset',
             qos_profile=qos
         )
 
@@ -212,6 +219,19 @@ def main(args=None):
     # Bind the close event to the on_close function
     root.protocol("WM_DELETE_WINDOW", on_close)  # handles window close
     root.mainloop()
+
+
+
+def calculate_picture_offset(self):
+        """
+        #TODO: test on real PLC!
+        Dummy function, as the actual implementation depends on the specific requirements of the application.
+        Calculate the offset of the picture.
+        :return: The offset of the picture.
+        """
+        #Ask via TCP/IP the offset to the ATS.
+        
+        return 0.01, 0.9, 0.01  # x, y, theta
 
 #TODO: needed?
 if __name__ == '__main__':

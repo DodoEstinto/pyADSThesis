@@ -133,19 +133,3 @@ def manageMrTrolleyVCheckErrorCheck(self,goalHandler):
         funcState=self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.State",pyads.PLCTYPE_INT)
     msg="Error check solved" 
     return msg,funcState
-
-def askPicture(self,msg,goalHandler):
-    '''
-    Handle the ask picture action.
-    '''
-    msg_feed=CallFunctionBlock.Feedback()
-    msg_feed.msg_type=msg_type.ASKING_PICTURE
-    msg_feed.msg=msg
-    goalHandler.publish_feedback(msg_feed)
-    self.get_logger().info("[Debug]Waiting for the picture...")
-    while(not self.askPictureEvent):
-        #rclpy.spin_once(self)
-        pass
-    self.askPictureEvent=False
-    return self.calculate_picture_offset(self.picture)
-    

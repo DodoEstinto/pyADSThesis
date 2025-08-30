@@ -22,7 +22,7 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy
 from rclpy.executors import MultiThreadedExecutor
 from copy import deepcopy
 
-from prometheus_req_interfaces.msg import EquipmentStatus,ScrewSlot
+from prometheus_req_interfaces.msg import EquipmentStatus,ScrewSlot,Offset
 from prometheus_req_interfaces.action import CallFunctionBlock
 from prometheus_req_py.ADS.structures import EquipmentStatus_ctype
 from prometheus_req_py.ADS.utils import reqState,getReqStateMsg,msgType,publishFeedback
@@ -61,9 +61,9 @@ class ADS_Node(Node):
             qos_profile=qos,
         )
         # Create a subscription to the ask picture action
-        self.ADSPhotoSub= self.create_subscription(
-            Empty,
-            'takePicture',
+        self.ADSOffsetSub= self.create_subscription(
+            Offset,
+            'offset',
             self.askPicture_callback,
             qos_profile=qos,
         )
@@ -72,7 +72,7 @@ class ADS_Node(Node):
         self.picture= None
         self.errorCheckEvent = False
         self.askPictureEvent = False
-        self.timer = self.create_timer(timerPeriod, self.timer_callback)
+        #self.timer = self.create_timer(timerPeriod, self.timer_callback)
         self.lastTime=time.time()
         self.actionTimerDelay=5 #seconds
         self.lastStatus=None
@@ -85,9 +85,7 @@ class ADS_Node(Node):
         self.manageDepositTray = partial(depositTray.manageDepositTray, self)
         self.manageMrTrolleyVCheck = partial(mrTrolleyVCheck.manageMrTrolleyVCheck, self)
         self.manageMrTrolleyVCheckErrorCheck = partial(mrTrolleyVCheck.manageMrTrolleyVCheckErrorCheck, self)
-
-
-        self.askPicture= partial(mrTrolleyVCheck.askPicture, self)
+ 
         self.publishFeedback= partial(publishFeedback, self)
         
 
@@ -120,6 +118,9 @@ class ADS_Node(Node):
         statusMemory=pyads.NotificationAttrib(ctypes.sizeof(EquipmentStatus_ctype))#ctypes.sizeof(EquipmentStatus_ctype)
 
         self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
+
+        #TODO: test with real plc.
+        #self.first_update()
         
 
     def block_execute_callback(self,goalHandler):
@@ -297,30 +298,33 @@ class ADS_Node(Node):
         self.get_logger().info("Uscito!")
         self.errorCheckEvent=False
 
-    def askPicture_callback(self, _):
+
+    def askPicture(self,msg,goalHandler):
+        '''
+        Handle the ask picture action.
+        '''
+        msg_feed=CallFunctionBlock.Feedback()
+        msg_feed.msg_type=msgType.ASKING_PICTURE
+        msg_feed.msg=msg
+        goalHandler.publish_feedback(msg_feed)
+        self.get_logger().info("[Debug]Waiting for the picture...")
+        while(not self.askPictureEvent):
+            #rclpy.spin_once(self)
+            pass
+        self.askPictureEvent=False
+        return self.offset
+    
+
+    def askPicture_callback(self, offset: Offset):
         """
         Callback for the ask picture action.
         This function is called when the client sends a picture.
         """
+
         self.get_logger().info("[ADS]ASK PICTURE CALLBACK!")
-        self.picture=0 # Dummy value, as the actual picture handling is not implemented here.
+        self.offset=(offset.x, offset.y, offset.theta) # Dummy value, as the actual picture handling is not implemented here.
         self.askPictureEvent=True
         
-
-    
-
-
-    def calculate_picture_offset(self,picture):
-        """
-        TODO: move to client node!
-        Dummy function, as the actual implementation depends on the specific requirements of the application.
-        Calculate the offset of the picture.
-        :param picture: The picture to calculate the offset for.
-        :return: The offset of the picture.
-
-        """
-        return 0.01, 0.9, 0.01  # x, y, theta
-
 
    
 
@@ -378,6 +382,10 @@ class ADS_Node(Node):
         self.publisher.publish(statusUpdate)
         self.lastStatus=deepcopy(statusUpdate)
 
+    def first_update(self):
+         status=self.plc.read_by_name('GVL_ATS.equipmentState',EquipmentStatus_ctype)
+         statusUpdate=self.cpy_to_equipment_status_msg(status)
+         self.publisher.publish(statusUpdate)
 
     def timer_callback(self):
         '''
