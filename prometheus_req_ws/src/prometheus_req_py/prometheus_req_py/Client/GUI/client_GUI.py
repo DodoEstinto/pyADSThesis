@@ -6,7 +6,7 @@ def initLabels(self):
     Initialize all labels to "N/A" and neutral background.
     This is called at the start of the GUI to ensure all fields are reset.
     '''
-# Reset all label fields to "N/A" and neutral background
+    # Reset all label fields to "N/A" and neutral background
     for field, label in self.labels.items():
         label.config(text="N/A", bg="#ddd")
 
@@ -143,6 +143,9 @@ def updateLabels(self):
     '''
 
     def color(val):
+        '''
+        Determine the background color based on the value.
+        '''
         return "#c8e6c9" if val else "#ffcdd2"
 
     # Update checks and positions
@@ -171,7 +174,7 @@ def updateLabels(self):
         bg = color(val) if isinstance(val, bool) else "#ddd"
         self.labels[field].config(text=str(val), bg=bg)
 
-    # --- Update States Text Box (like ScrewBay) ---
+    # --- Update States Text Box ---
     self.statesText.configure(state='normal')
     self.statesText.delete('1.0', tk.END)
     state_field=[
