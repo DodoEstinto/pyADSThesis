@@ -3,6 +3,11 @@ import pyads
 
 #TODO: da implementare
 def manageDepositTray(self,goalHandler) -> tuple[str,int]:
+    '''
+    Manage the individual behaviour of the deposit tray function block.
+    :param goalHandler: The goal handler to manage the request.
+    :return: A tuple containing the message and the state of the function block.
+    '''
 
     funcState=self.plc.read_by_name("GVL_ATS.requests.depositTray.State",pyads.PLCTYPE_INT)
     self.get_logger().info(f"funcState:{funcState}")

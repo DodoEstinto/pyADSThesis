@@ -7,7 +7,7 @@ def manageScrewPickupErrorCheck(self,goalHandler):
     '''
     Manage the error check for the screw pickup function block.
     :param goalHandler: The goal handler to manage the request.
-    TODO: return
+    :return: A tuple containing the message and the state of the function block.
     '''
     funcState=reqState.ST_ERROR_CHECK
     self.get_logger().info("[ADS_Node]Checking pickupScrew Error Check...")
@@ -22,7 +22,9 @@ def manageScrewPickupErrorCheck(self,goalHandler):
 
 def manageScrewPickupLogic(self,goalHandler,funcState):
     '''
-    TODO: complete the docstring
+    Manage the logic of the screw pickup function block.
+    :param goalHandler: The goal handler to manage the request.
+    :param funcState: The current state of the function block.
     '''
 
     self.get_logger().info(f"[DEBUG]Logic funcState:{funcState}")

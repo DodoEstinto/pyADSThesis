@@ -73,7 +73,7 @@ class Client_Node(Node):
         goalHandler=future.result()
         self.get_logger().info(f"[CLIENT NODE] Action response:Entering")
 
-        #If the action is refused. Even if the ads node never refuses, 
+        #If the action is refused. Even if the ads node never refuses,
         #this has been added for anomaly robusteness.
         if not goalHandler.accepted:
             self.get_logger().info(f"[CLIENT NODE] Action response:Not accepted")
