@@ -11,6 +11,6 @@ __all__ = [
     'loadTray',
     'depositTray',
     'screwTemplate',
-    'setScrewBayState'
-
+    'setScrewBayState',
+    'present2Op'
 ]

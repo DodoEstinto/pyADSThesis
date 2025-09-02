@@ -97,7 +97,9 @@ class ADS_Node(Node):
         self.manageDepositTray = partial(depositTray.manageDepositTray, self)
         self.manageMrTrolleyVCheck = partial(mrTrolleyVCheck.manageMrTrolleyVCheck, self)
         self.manageMrTrolleyVCheckErrorCheck = partial(mrTrolleyVCheck.manageMrTrolleyVCheckErrorCheck, self)
+        self.managePresent2Op = partial(present2Op.managePresent2Op, self)
         self.publishFeedback= partial(publishFeedback, self)
+        
         
 
         # Initialize the checks methods. Treat them as methods of the ADS_Node class.
@@ -148,7 +150,8 @@ class ADS_Node(Node):
         functionBlockName=goalHandler.request.function_block_name
 
         #TODO: update as needed
-        allowedFunctionBlocks=["positionerRotate","loadTray","mrTrolleyVCheck","screwPickup","screwTight","depositTray","pickUpTray"]
+        allowedFunctionBlocks=["positionerRotate","loadTray","mrTrolleyVCheck","screwPickup",
+                               "screwTight","depositTray","pickUpTray","present2Op"]
         if(functionBlockName    not in allowedFunctionBlocks):
             self.get_logger().info(f"[ADS_Node] Function Block {goalHandler.request.function_block_name} not allowed! Allowed function blocks are: {allowedFunctionBlocks}")
             goalHandler.abort()
@@ -237,6 +240,8 @@ class ADS_Node(Node):
                         result.msg,result.state=self.manageScrew(goalHandler,functionBlockName)
                 case "screwTight":
                         result.msg,result.state=self.manageScrew(goalHandler,functionBlockName)
+                case "present2Op":
+                        result.msg,result.state=self.managePresent2Op(goalHandler)
 
 
             goalHandler.succeed()
@@ -280,8 +285,10 @@ class ADS_Node(Node):
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.target2Use",req.int_param1,pyads.PLCTYPE_INT)
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.focalPlane2Use",req.int_param2,pyads.PLCTYPE_INT)
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.screwRecipeID",req.int_param3,pyads.PLCTYPE_BYTE)
-
-                self.get_logger().info(f"[DEBUG]Parameters for {functionBlockName} set: x:{req.float_param1}, y:{req.float_param2}, theta:{req.float_param3}, screwArea:{2 if req.bool_param1 else 1}, target2Use:{req.int_param1}, focalPlane2Use:{req.int_param2}, screwRecipeID:{req.int_param3}")
+                #self.get_logger().info(f"[DEBUG]Parameters for {functionBlockName} set: x:{req.float_param1}, y:{req.float_param2}, theta:{req.float_param3}, screwArea:{2 if req.bool_param1 else 1}, target2Use:{req.int_param1}, focalPlane2Use:{req.int_param2}, screwRecipeID:{req.int_param3}")
+            case "present2Op":
+                self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.sideToScrew",req.int_param1,pyads.PLCTYPE_INT)
+                self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.faceToScrew",req.int_param2,pyads.PLCTYPE_INT)
 
     def runChecks(self,functionBlockName:str) -> tuple[bool,str]:
         '''

@@ -64,6 +64,13 @@ class Client_Node(Node):
                     self.ActionReq.int_param1=screw
                     if(screw is None):
                         cancelAction=True
+                case "present2Op":
+                    side = simpledialog.askinteger("Present to Operator", "Enter the side to screw (1-2):", minvalue=1, maxvalue=2)
+                    face = simpledialog.askinteger("Present to Operator", "Enter the face to screw (1-4):", minvalue=1, maxvalue=4)
+                    self.ActionReq.int_param1=side
+                    self.ActionReq.int_param2=face
+                    if(side is None or face is None):
+                        cancelAction=True
                 case "screwTight":
                     response=ScrewDialog(self.root, title="Screw Tightening Parameters")
                     if(response.result is None):
@@ -98,7 +105,6 @@ class Client_Node(Node):
                         self.get_logger().info(f"[Client_node] Calling setScrewBayState for {self.screwBayReq.bay_number} bays with state: {self.screwBayReq.screw_bays}")
                         future=self.screwBayStateClient.call_async(self.screwBayReq)
                     self.functionBlockCalled=False
-
                     return                        
             if(cancelAction):
                 self.functionBlockCalled=False
