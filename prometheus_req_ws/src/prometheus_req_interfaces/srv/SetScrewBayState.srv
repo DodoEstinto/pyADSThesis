@@ -1,0 +1,4 @@
+int16 bay_number
+ScrewSlot[] screw_bays
+---
+bool success

@@ -1,6 +1,6 @@
 /ads_node:
   ros__parameters:
-    robot_name: "Giskard"
+    robot_name: "Prometheus"
 
     remote_ip: '10.10.10.5'
     remote_ads: '5.152.54.58.1.1'

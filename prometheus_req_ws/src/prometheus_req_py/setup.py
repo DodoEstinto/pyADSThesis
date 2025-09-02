@@ -1,7 +1,6 @@
 from setuptools import find_packages, setup
 
 package_name = 'prometheus_req_py'
-bringup_package_name= 'prometheus_req_bringup'
 
 setup(
     name=package_name,
@@ -14,15 +13,15 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='ubuntu',
-    maintainer_email='enrico.piccinini@gmail.com',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    maintainer='Davide Paossi',
+    maintainer_email='davidepaossi@gmail.com',
+    description='Package containing nodes that implements Equipment Requests call',
+    license='Modified MIT License',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'ads_node = prometheus_req_py.ads_node:main',
-            'client_node = prometheus_req_py.client_node:main'
+            'ads_node = prometheus_req_py.ADS.ads_node:main',
+            'client_node = prometheus_req_py.Client.client_node:main'
         ],
     },
 )
