@@ -18,7 +18,7 @@ from getpass import getpass
 import pyads # pyright: ignore[reportMissingImports]
 import time
 import ctypes
-from rclpy.qos import QoSProfile, QoSReliabilityPolicy
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy
 from rclpy.executors import MultiThreadedExecutor
 from copy import deepcopy
 import requests
@@ -45,7 +45,11 @@ class ADS_Node(Node):
         super().__init__('ads_node')
         #self.init_s_time=time.time_ns()
         #always drop old msg in case of a slowdonw. Keep the newest.
-        self.publisher = self.create_publisher(EquipmentStatus, 'state', 1)
+        stateQos=QoSProfile(
+            depth=1,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL
+        )
+        self.statePub = self.create_publisher(EquipmentStatus, 'state',qos_profile=stateQos)
         timerPeriod = 1  # seconds
         self.actionServer= rclpyActionServer(self,CallFunctionBlock,
                                              "CallFunctionBlock",
@@ -73,7 +77,7 @@ class ADS_Node(Node):
         self.picture= None
         self.errorCheckEvent = False
         self.askPictureEvent = False
-        self.timer = self.create_timer(timerPeriod, self.timer_callback)
+        #self.timer = self.create_timer(timerPeriod, self.timer_callback)
         self.lastTime=time.time()
         self.actionTimerDelay=5 #seconds
         self.lastStatus=None
@@ -121,7 +125,7 @@ class ADS_Node(Node):
         self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
 
         #TODO: test with real plc.
-        #self.first_update()
+        self.first_update()
         
 
     def block_execute_callback(self,goalHandler):
@@ -400,13 +404,13 @@ class ADS_Node(Node):
         #WARNING: if you change the type of the notification, you have also to update it in the statusMemory init!
         _,_,value=self.plc.parse_notification(notification,EquipmentStatus_ctype)
         statusUpdate=self.cpy_to_equipment_status_msg(value)
-        self.publisher.publish(statusUpdate)
+        self.statePub.publish(statusUpdate)
         self.lastStatus=deepcopy(statusUpdate)
 
     def first_update(self):
          status=self.plc.read_by_name('GVL_ATS.equipmentState',EquipmentStatus_ctype)
          statusUpdate=self.cpy_to_equipment_status_msg(status)
-         self.publisher.publish(statusUpdate)
+         self.statePub.publish(statusUpdate)
          self.get_logger().info("[ADS_Node]First status update published.")
 
     def timer_callback(self):
@@ -420,7 +424,7 @@ class ADS_Node(Node):
             statusUpdate=self.cpy_to_equipment_status_msg(status)
         else:
             statusUpdate=self.lastStatus
-        self.publisher.publish(statusUpdate)
+        self.statePub.publish(statusUpdate)
         
 
 def main(args=None):

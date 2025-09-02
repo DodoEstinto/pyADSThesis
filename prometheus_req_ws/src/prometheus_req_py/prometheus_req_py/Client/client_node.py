@@ -23,7 +23,7 @@ from prometheus_req_py.Client.utils import OkDialog,ScrewDialog
 import tkinter as tk
 from tkinter import messagebox,simpledialog
 from std_msgs.msg import Empty
-from rclpy.qos import QoSProfile, QoSReliabilityPolicy
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy
 from functools import partial
 from prometheus_req_py.Client.GUI import client_GUI
 import requests
@@ -34,10 +34,11 @@ class Client_Node(Node):
     It provides a simplified interface for monitoring and controlling the system.
     '''
 
-    def call_block(self, name:str):
+    def call_block(self, name:str) -> None:
         '''
         This function is called when the building block buttons are pressed.
         It sends an async request to the service server.
+        :param name: The name of the function block to call.
         '''
         cancelAction=False
         #Prevent to call a second function call while the previous one is still executing.
@@ -85,11 +86,11 @@ class Client_Node(Node):
                 self.send_goal_future.add_done_callback(self.goal_response_callback)
                 self.get_logger().info(f"[Client_node] Function Block already called, waiting for response...")
                 self.updateResponseText("A function Block has been already called, waiting for its response...", isResult=False)
-                
-    def goal_response_callback(self,future):
+
+    def goal_response_callback(self,future: rclpy.Future) -> None:
         '''
         This function is called when the action client receive a response.
-
+        :future: The future containing the response of the action.
         '''
         goalHandler=future.result()
         self.get_logger().info(f"[CLIENT NODE] Action response:Entering")
@@ -110,9 +111,10 @@ class Client_Node(Node):
         #Tell where you are waiting for a response.
         self.send_goal_future.add_done_callback(self.goal_result_callback)
 
-    def goal_result_callback(self,future):
+    def goal_result_callback(self,future: rclpy.Future) -> None:
         '''
         This function is called when the action client receive a result.
+        :future: The future containing the result of the action.
         '''
         self.functionBlockResult=future.result().result.success
         self.functionBlockState=future.result().result.state
@@ -121,10 +123,11 @@ class Client_Node(Node):
   
         self.updateLabels()  #TODO: needed?
         self.updateResponseText(self.functionBlockMsg, isResult=True)
-    
-    def goal_feedback_callback(self,feedback):
+
+    def goal_feedback_callback(self,feedback: CallFunctionBlock.Feedback) -> None:
         '''
         This function is called when the action client receive a feedback.
+        :feedback: The feedback received from the action server.
         '''
         feedbackMsgType=feedback.feedback.msg_type
         self.functionBlockMsg=feedback.feedback.msg
@@ -157,11 +160,15 @@ class Client_Node(Node):
         self.updateLabels = partial(client_GUI.updateLabels,self)
         self.updateResponseText = partial(client_GUI.updateResponseText,self)
         self.state=EquipmentStatus()
-        self.subscription = self.create_subscription(
+        stateQos=QoSProfile(
+            depth=1,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL
+        )
+        self.stateSub = self.create_subscription(
             EquipmentStatus,
             'state',
             self.state_update_callback,
-            1)
+            qos_profile=stateQos)
         
         #it's essential that we do not lost the acks due to a networking failure
         #so we guarantee that samples are delivered, also trying multiple times.
@@ -192,15 +199,19 @@ class Client_Node(Node):
             #self.get_logger().info('service not available, waiting again...')
             pass
         self.req=CallFunctionBlock.Goal()
-        self.subscription  # prevent unused variable warning
+        self.stateSub  # prevent unused variable warning
 
-    def state_update_callback(self, msg):
+    def state_update_callback(self, msg: EquipmentStatus) -> None:
         '''
         Called each time the plc's equipmentstate changes.
         It updates the local state variable and the labels of the GUI.
+        :param msg: The new state of the equipment.
         '''
         #Testing code
-        #self.get_logger().info("[Client_node]Receinving:"+str(msg.active_state_fsm_string))
+        #self.get_logger().info("[Client_node]Receiving:"+str(msg.active_state_fsm_string))
+        if(msg is None):
+            self.get_logger().error("[Client_node]Received None msg!")
+            return
         self.state=deepcopy(msg)
         self.updateLabels()
 
