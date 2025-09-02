@@ -80,7 +80,6 @@ class ADS_Node(Node):
         )
 
 
-        
         self.picture= None
         self.errorCheckEvent = False
         self.askPictureEvent = False
@@ -132,7 +131,7 @@ class ADS_Node(Node):
 
         #TODO: test with real plc.
         self.first_update()
-        
+
 
     def block_execute_callback(self,goalHandler):
         '''
@@ -149,7 +148,7 @@ class ADS_Node(Node):
         functionBlockName=goalHandler.request.function_block_name
 
         #TODO: update as needed
-        allowedFunctionBlocks=["positionerRotate","loadTray","mrTrolleyVCheck","screwPickup","screwTight"]
+        allowedFunctionBlocks=["positionerRotate","loadTray","mrTrolleyVCheck","screwPickup","screwTight","depositTray","pickUpTray"]
         if(functionBlockName    not in allowedFunctionBlocks):
             self.get_logger().info(f"[ADS_Node] Function Block {goalHandler.request.function_block_name} not allowed! Allowed function blocks are: {allowedFunctionBlocks}")
             goalHandler.abort()

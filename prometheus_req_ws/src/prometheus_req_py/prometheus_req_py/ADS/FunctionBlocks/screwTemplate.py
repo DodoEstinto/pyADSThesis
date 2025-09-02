@@ -5,7 +5,7 @@ from prometheus_req_interfaces.action import CallFunctionBlock
 
 def manageScrewErrorCheck(self,goalHandler,functionBlockName:str):
     '''
-    Manage the error check for the screw pickup function block.
+    Manage the error check for the screw pickup and tight functions block.
     :param goalHandler: The goal handler to manage the request.
     :return: A tuple containing the message and the state of the function block.
     '''
@@ -20,10 +20,10 @@ def manageScrewErrorCheck(self,goalHandler,functionBlockName:str):
     msg="Error check solved" 
     return msg,funcState
 
-#TODO: in case of screw pickup once the photo is taken, the plc do a correction and then ask for a new photo, and so on. Remember to handle this.
+#TODO: once the photo is taken, the plc do a correction and then ask for a new photo, and so on. Remember to handle this.
 def manageScrewLogic(self,goalHandler,funcState,functionBlockName:str):
     '''
-    Manage the logic of the screw pickup function block.
+    Manage the logic of the screw pickup and tight functions block.
     :param goalHandler: The goal handler to manage the request.
     :param funcState: The current state of the function block.
     '''
@@ -76,7 +76,7 @@ def manageScrewLogic(self,goalHandler,funcState,functionBlockName:str):
 
 def manageScrew(self,goalHandler,functionBlockName:str) -> tuple[str,int]:
     '''
-    Manage the individual behaviour of the screw tight function block.
+    Manage the individual behaviour of the screw pickup and tight functions block.
     :param goalHandler: The goal handler to manage the request.
     :return: A tuple containing the message and the state of the function block.
     '''
