@@ -16,16 +16,17 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from copy import deepcopy
-from prometheus_req_interfaces.msg import EquipmentStatus, Offset
+from prometheus_req_interfaces.msg import EquipmentStatus, Offset,ScrewSlot
 from prometheus_req_interfaces.action import CallFunctionBlock
 from prometheus_req_py.ADS.utils import msgType
-from prometheus_req_py.Client.utils import OkDialog,ScrewDialog
+from prometheus_req_py.Client.utils import OkDialog,ScrewDialog,ScrewBayDialog
 import tkinter as tk
 from tkinter import messagebox,simpledialog
 from std_msgs.msg import Empty
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy
 from functools import partial
 from prometheus_req_py.Client.GUI import client_GUI
+from prometheus_req_interfaces.srv import SetScrewBayState
 import requests
 
 class Client_Node(Node):
@@ -45,22 +46,22 @@ class Client_Node(Node):
         if not self.functionBlockCalled:
             self.functionBlockCalled=True
             self.get_logger().info(f"[Client_node] Calling Block {name}")
-            self.req.function_block_name=name
+            self.ActionReq.function_block_name=name
             #based on the function called, a different parameter is asked.
             match(name):
                 case "loadTray":
                     answer = messagebox.askyesnocancel("Load Tray", "Load(Yes) or Unload(No) the tray?")
-                    self.req.bool_param1=answer
+                    self.ActionReq.bool_param1=answer
                     if(answer is None):
                         cancelAction=True
                 case "positionerRotate":
                     answer = messagebox.askyesnocancel("Positioner Rotate", "Rotate clockwise(Yes) or anticlockwise(No)?")
-                    self.req.bool_param1=answer
+                    self.ActionReq.bool_param1=answer
                     if(answer is None):
                         cancelAction=True
                 case "screwPickup":
                     screw = simpledialog.askinteger("Pick Up Screw", "Enter the screw number to pick up (1-6):", minvalue=1, maxvalue=6)
-                    self.req.int_param1=screw
+                    self.ActionReq.int_param1=screw
                     if(screw is None):
                         cancelAction=True
                 case "screwTight":
@@ -68,20 +69,44 @@ class Client_Node(Node):
                     if(response.result is None):
                         cancelAction=True
                     else:
-                        self.req.float_param1=response.result["screwX"]
-                        self.req.float_param2=response.result["screwY"]
-                        self.req.float_param3=response.result["screwZ"]
-                        self.req.int_param1=response.result["targetToUse"]
-                        self.req.int_param2=response.result["focalPlane"]
-                        self.req.int_param3=response.result["screwRecipeID"]
-                        self.req.bool_param1=True if response.result["screwArea"]=="inside" else False
+                        self.ActionReq.float_param1=response.result["screwX"]
+                        self.ActionReq.float_param2=response.result["screwY"]
+                        self.ActionReq.float_param3=response.result["screwZ"]
+                        self.ActionReq.int_param1=response.result["targetToUse"]
+                        self.ActionReq.int_param2=response.result["focalPlane"]
+                        self.ActionReq.int_param3=response.result["screwRecipeID"]
+                        self.ActionReq.bool_param1=True if response.result["screwArea"]=="inside" else False
+                case "setScrewBayState":
+                    self.screwBayReq.bay_number=6
+                    response=ScrewBayDialog(self.root,screw_bays=self.state.screw_bay,num_slots=self.screwBayReq.bay_number,title="Screw Bay Editor")
+                    if(response.result is None):
+                        pass
+                    else:
+                        ros_screw_bays = []
+                        for slot_dict in response.result:
+                            if slot_dict is None:
+                                continue  # skip invalid entries
+                            slot_msg = ScrewSlot()
+                            slot_msg.max_idx_x = slot_dict["MAX_IDX_X"]
+                            slot_msg.max_idx_y = slot_dict["MAX_IDX_Y"]
+                            slot_msg.next_idx_x  = slot_dict["nextIdxX"]
+                            slot_msg.next_idx_y  = slot_dict["nextIdxY"]
+                            ros_screw_bays.append(slot_msg)
+
+                        self.screwBayReq.screw_bays = ros_screw_bays
+
+                        self.get_logger().info(f"[Client_node] Calling setScrewBayState for {self.screwBayReq.bay_number} bays with state: {self.screwBayReq.screw_bays}")
+                        future=self.screwBayStateClient.call_async(self.screwBayReq)
+                    self.functionBlockCalled=False
+
+                    return                        
             if(cancelAction):
                 self.functionBlockCalled=False
                 self.get_logger().info(f"[Client_node] Action cancelled by the user.")
                 self.updateResponseText("Action cancelled by the user.", isResult=False)
             else:
                 #Ask the permission to run the function block.
-                self.send_goal_future=self.client.send_goal_async(self.req,feedback_callback=self.goal_feedback_callback)
+                self.send_goal_future=self.functionBlockClient.send_goal_async(self.ActionReq,feedback_callback=self.goal_feedback_callback)
                 #Tell where you are waiting for a response.
                 self.send_goal_future.add_done_callback(self.goal_response_callback)
                 self.get_logger().info(f"[Client_node] Function Block already called, waiting for response...")
@@ -188,17 +213,23 @@ class Client_Node(Node):
             qos_profile=qos
         )
 
+
         self.functionBlockCalled=False
         self.functionBlockDone=False
         self.functionBlockState="N/A"
         self.functionBlockMsg="N/A"
         self.functionBlockResult=False
         self.init_GUI(root)
-        self.client=ActionClient(self,CallFunctionBlock,"CallFunctionBlock")
-        while not self.client.wait_for_server(timeout_sec=1):
-            #self.get_logger().info('service not available, waiting again...')
+        self.functionBlockClient=ActionClient(self,CallFunctionBlock,"CallFunctionBlock")
+        while not self.functionBlockClient.wait_for_server(timeout_sec=1):
+            self.get_logger().info('service not available, waiting again...')
             pass
-        self.req=CallFunctionBlock.Goal()
+        self.screwBayStateClient=self.create_client(SetScrewBayState,'setScrewBayState')
+        while not self.screwBayStateClient.wait_for_service(timeout_sec=1):
+            self.get_logger().info('service not available, waiting again...')
+            pass
+        self.screwBayReq=SetScrewBayState.Request()
+        self.ActionReq=CallFunctionBlock.Goal()
         self.stateSub  # prevent unused variable warning
 
     def state_update_callback(self, msg: EquipmentStatus) -> None:

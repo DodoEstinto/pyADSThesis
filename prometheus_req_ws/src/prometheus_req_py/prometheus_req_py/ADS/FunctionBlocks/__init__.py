@@ -9,5 +9,8 @@ __all__ = [
     'screwPickup',
     'positionerRotate',
     'loadTray',
-    'depositTray'
+    'depositTray',
+    'screwTemplate',
+    'setScrewBayState'
+
 ]

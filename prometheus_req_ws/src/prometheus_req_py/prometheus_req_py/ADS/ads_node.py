@@ -23,13 +23,13 @@ from rclpy.executors import MultiThreadedExecutor
 from copy import deepcopy
 import requests
 from prometheus_req_interfaces.msg import EquipmentStatus,ScrewSlot,Offset
+from prometheus_req_interfaces.srv import SetScrewBayState
 from prometheus_req_interfaces.action import CallFunctionBlock
-from prometheus_req_py.ADS.structures import EquipmentStatus_ctype
+from prometheus_req_py.ADS.structures import EquipmentStatus_ctype,ScrewSlot_ctype
 from prometheus_req_py.ADS.utils import reqState,getReqStateMsg,msgType,publishFeedback
 from std_msgs.msg import Empty
 from rclpy.action import ActionServer as rclpyActionServer
 from prometheus_req_py.ADS.FunctionBlocks import *
-from prometheus_req_py.ADS.FunctionBlocks import screwTemplate
 import prometheus_req_py.ADS.checks as checks
 from functools import partial
 
@@ -73,6 +73,13 @@ class ADS_Node(Node):
             qos_profile=qos,
         )
 
+        self.setScrewBayStateService= self.create_service(
+            SetScrewBayState,
+            'setScrewBayState',
+            self.setScrewBayState_callback
+        )
+
+
         
         self.picture= None
         self.errorCheckEvent = False
@@ -91,7 +98,6 @@ class ADS_Node(Node):
         self.manageDepositTray = partial(depositTray.manageDepositTray, self)
         self.manageMrTrolleyVCheck = partial(mrTrolleyVCheck.manageMrTrolleyVCheck, self)
         self.manageMrTrolleyVCheckErrorCheck = partial(mrTrolleyVCheck.manageMrTrolleyVCheckErrorCheck, self)
- 
         self.publishFeedback= partial(publishFeedback, self)
         
 
@@ -156,7 +162,8 @@ class ADS_Node(Node):
         
 
         result=CallFunctionBlock.Result()
-        
+
+
         self.get_logger().info(f"[DEBUG]GVL_ATS.requests.{functionBlockName}.request")
         
         actualState=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT)
@@ -350,7 +357,43 @@ class ADS_Node(Node):
 
         self.askPictureEvent=True
         
+    def setScrewBayState_callback(self,request,response):
+        '''
+        Callback for the setScrewBayState service.
+        This function is called when a client sends a request to the service.
+        It sets the screw bay state in the PLC.
+        :param request: The request containing the parameters.
+        :param response: The response to send back to the client.
+        :return: The response with the success status.
+        '''
+        bayNumber=request.bay_number
+        screwBays=request.screw_bays
+        if bayNumber<1:
+            self.get_logger().info(f"[ADS_Node] Invalid bay number {bayNumber}. Must be positive.")
+            response.success=False
+            return response
+        if len(screwBays)!=bayNumber:
+            self.get_logger().info(f"[ADS_Node] Invalid number of screw bays {len(screwBays)}. Must be equal to bay number {bayNumber}.")
+            response.success=False
+            return response
+        screwBays_ctype=[]
+        for i in range(bayNumber):
+            #self.plc.write_by_name(f"GVL_ATS.screwBay[{i}].maxIdxX",screwBays[i].max_idx_x,pyads.PLCTYPE_INT)
+            #self.plc.write_by_name(f"GVL_ATS.screwBay[{i}].maxIdxY",screwBays[i].max_idx_y,pyads.PLCTYPE_INT)
+            #self.plc.write_by_name(f"GVL_ATS.screwBay[{i}].nextIdxX",screwBays[i].next_idx_x,pyads.PLCTYPE_INT)
+            #self.plc.write_by_name(f"GVL_ATS.screwBay[{i}].nextIdxY",screwBays[i].next_idx_y,pyads.PLCTYPE_INT)
+            #self.get_logger().info(f"[ADS_Node] Set screw bay {i} with maxIdxX={screwBays[i].max_idx_x}, maxIdxY={screwBays[i].max_idx_y}, nextIdxX={screwBays[i].next_idx_x}, nextIdxY={screwBays[i].next_idx_y}.")
 
+            slot_ctype = ScrewSlot_ctype()
+            slot_ctype.MAX_IDX_X = screwBays[i].max_idx_x
+            slot_ctype.MAX_IDX_Y = screwBays[i].max_idx_y
+            slot_ctype.nextIdxX  = screwBays[i].next_idx_x
+            slot_ctype.nextIdxY  = screwBays[i].next_idx_y
+            screwBays_ctype.append(slot_ctype)
+
+            self.plc.write_by_name(f"GVL_ATS.equipmentState.screwBay[{i+1}]",screwBays_ctype[i],ScrewSlot_ctype)
+        response.success=True
+        return response
    
 
     def cpy_to_equipment_status_msg(self,src:EquipmentStatus_ctype) -> EquipmentStatus:
