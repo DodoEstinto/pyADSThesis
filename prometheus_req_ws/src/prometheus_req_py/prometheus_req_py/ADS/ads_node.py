@@ -274,9 +274,9 @@ class ADS_Node(Node):
                 #screwType
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.screwType",req.int_param1,pyads.PLCTYPE_INT)
             case "screwTight":
-                self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.xVisCorrTray",req.float_param1,pyads.PLCTYPE_REAL)
-                self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.yVisCorrTray",req.float_param2,pyads.PLCTYPE_REAL)
-                self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.thetaVisCorrTray",req.float_param3,pyads.PLCTYPE_REAL)
+                self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.screwX",req.float_param1,pyads.PLCTYPE_REAL)
+                self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.screwY",req.float_param2,pyads.PLCTYPE_REAL)
+                self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.screwZ",req.float_param3,pyads.PLCTYPE_REAL)
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.screwArea",2 if req.bool_param1 else 1,pyads.PLCTYPE_INT)
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.target2Use",req.int_param1,pyads.PLCTYPE_INT)
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.focalPlane2Use",req.int_param2,pyads.PLCTYPE_INT)

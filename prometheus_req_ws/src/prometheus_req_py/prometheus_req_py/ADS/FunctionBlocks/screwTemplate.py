@@ -10,9 +10,9 @@ def manageScrewErrorCheck(self,goalHandler,functionBlockName:str):
     :return: A tuple containing the message and the state of the function block.
     '''
     funcState=reqState.ST_ERROR_CHECK
-    self.get_logger().info("[ADS_Node]Checking pickupScrew Error Check...")
+    self.get_logger().info(f"[ADS_Node]Checking {functionBlockName} Error Check...")
     #this refers to the ads_node.error_check(...) method
-    self.error_check("pickupScrew Error Check",goalHandler)
+    self.error_check(f"{functionBlockName} Error Check",goalHandler)
     self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.errorAck",1,pyads.PLCTYPE_BOOL)
     self.get_logger().info(f"[ADS_Node]ACK sent for {functionBlockName} Error Check!") 
     while(funcState==reqState.ST_ERROR_CHECK):
