@@ -85,7 +85,7 @@ class ADS_Node(Node):
         self.askPictureEvent = False
         #self.timer = self.create_timer(timerPeriod, self.timer_callback)
         self.lastTime=time.time()
-        self.actionTimerDelay=5 #seconds
+        self.actionTimerDelay=3 #seconds
         self.lastStatus=None
 
         
@@ -97,8 +97,10 @@ class ADS_Node(Node):
         self.manageDepositTray = partial(depositTray.manageDepositTray, self)
         self.manageMrTrolleyVCheck = partial(mrTrolleyVCheck.manageMrTrolleyVCheck, self)
         self.manageMrTrolleyVCheckErrorCheck = partial(mrTrolleyVCheck.manageMrTrolleyVCheckErrorCheck, self)
-        self.managePresent2Op = partial(present2Op.managePresent2Op, self)
+        self.managePresent = partial(presentTemplate.managePresent, self)
         self.publishFeedback= partial(publishFeedback, self)
+        self.manageStackTray = partial(stackTray.manageStackTray, self)
+        self.manageGyroGrpRotate = partial(gyroGrpRotate.manageGyroGrpRotate, self)
         
         
 
@@ -134,7 +136,7 @@ class ADS_Node(Node):
         #TODO: test with real plc.
         self.first_update()
 
-
+        
     def block_execute_callback(self,goalHandler):
         '''
         Callback for the action server. This function is called when a client sends a request to the action server.
@@ -151,7 +153,8 @@ class ADS_Node(Node):
 
         #TODO: update as needed
         allowedFunctionBlocks=["positionerRotate","loadTray","mrTrolleyVCheck","screwPickup",
-                               "screwTight","depositTray","pickUpTray","present2Op"]
+                               "screwTight","depositTray","pickUpTray","present2Op","presentToScrew",
+                               "gyroGrpRot","stackTray"]
         if(functionBlockName    not in allowedFunctionBlocks):
             self.get_logger().info(f"[ADS_Node] Function Block {goalHandler.request.function_block_name} not allowed! Allowed function blocks are: {allowedFunctionBlocks}")
             goalHandler.abort()
@@ -193,17 +196,26 @@ class ADS_Node(Node):
             self.get_logger().info(f"[DEBUG]Parameters managed for {functionBlockName}")
             #Send the request to the PLC
             self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.request",1,pyads.PLCTYPE_BOOL)
-
+            counter=0
             while(self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT) == reqState.ST_READY):
                 if(time.time()-self.lastTime>self.actionTimerDelay):
+                    counter += 1
                     self.lastTime=time.time()
                     feedback_msg = CallFunctionBlock.Feedback()
                     feedback_msg.msg="Waiting for the function block state to start..."
                     goalHandler.publish_feedback(feedback_msg)
-                    self.get_logger().info(f"[DEBUG] Waiting for the function block state to start...")
-
+                    self.get_logger().info(f"[DEBUG] Waiting for the function block state to start... ({counter} try of 3)")
+                    if counter==3:
+                        break
                 pass
-
+            if counter==3:
+                self.get_logger().info(f"[DEBUG] Function Block {functionBlockName} did not start, aborting goal.")
+                goalHandler.abort()
+                result.success=False
+                result.msg=f"Function Block {functionBlockName} did not start, aborting goal."
+                result.state=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT)
+                return result
+            
             #Wait the completion of the task
             while(self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT) in (reqState.ST_EXECUTING,
                                                                                                              reqState.ST_EXECUTING_2,
@@ -231,7 +243,6 @@ class ADS_Node(Node):
                         result.msg,result.state=self.managePositionerRotate(goalHandler)
                 case "loadTray":
                         result.msg,result.state=self.manageLoadTray(goalHandler)
-                #TODO: NOT TESTED
                 case "depositTray":
                         result.msg,result.state=self.manageDepositTray(goalHandler)
                 case "mrTrolleyVCheck":
@@ -241,8 +252,13 @@ class ADS_Node(Node):
                 case "screwTight":
                         result.msg,result.state=self.manageScrew(goalHandler,functionBlockName)
                 case "present2Op":
-                        result.msg,result.state=self.managePresent2Op(goalHandler)
-
+                        result.msg,result.state=self.managePresent(goalHandler)
+                case "presentToScrew":
+                        result.msg,result.state=self.managePresent(goalHandler)
+                case "gyroGrpRot":
+                        result.msg,result.state=self.manageGyroGrpRotate(goalHandler)
+                case "stackTray":
+                        result.msg,result.state=self.manageStackTray(goalHandler)
 
             goalHandler.succeed()
             result.success=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.Done",pyads.PLCTYPE_BOOL)
@@ -286,9 +302,15 @@ class ADS_Node(Node):
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.focalPlane2Use",req.int_param2,pyads.PLCTYPE_INT)
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.screwRecipeID",req.int_param3,pyads.PLCTYPE_BYTE)
                 #self.get_logger().info(f"[DEBUG]Parameters for {functionBlockName} set: x:{req.float_param1}, y:{req.float_param2}, theta:{req.float_param3}, screwArea:{2 if req.bool_param1 else 1}, target2Use:{req.int_param1}, focalPlane2Use:{req.int_param2}, screwRecipeID:{req.int_param3}")
-            case "present2Op":
+            case "present2Op" | "presentToScrew":
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.sideToScrew",req.int_param1,pyads.PLCTYPE_INT)
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.faceToScrew",req.int_param2,pyads.PLCTYPE_INT)
+            case "gyroGrpRot":
+                self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.sideToRotate",req.int_param1,pyads.PLCTYPE_INT)
+            case "stackTray":
+                self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.stackLevel",req.int_param1,pyads.PLCTYPE_INT)
+            
+
 
     def runChecks(self,functionBlockName:str) -> tuple[bool,str]:
         '''

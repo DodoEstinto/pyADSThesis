@@ -35,6 +35,35 @@ class Client_Node(Node):
     It provides a simplified interface for monitoring and controlling the system.
     '''
 
+    def call_sequence(self):
+        '''
+        Do a complete sequence of function blocks
+        '''
+        self.functionBlockCalled=True
+
+        sequence=[
+            "loadTray",#load
+            "positionerRotate", #rotate
+            "positionerRotate", #rotate back
+            "pickupTray", 
+            "present2Op",
+            "presentToScrew",
+            "pickupScrew",
+            "screwTight",
+            "depositTray",
+            "loadTray"]
+        
+        for block in sequence:
+            if(self.sequenceAborted):
+                self.get_logger().info(f"[Client_node] Sequence aborted, stopping...")
+                self.sequenceAborted=False
+                break
+            self.call_block(block)
+
+        #in case the abort in on the last block, we need to reset the flag.
+        self.sequenceAborted=False
+        self.functionBlockCalled=False
+
     def call_block(self, name:str) -> None:
         '''
         This function is called when the building block buttons are pressed.
@@ -59,18 +88,38 @@ class Client_Node(Node):
                     self.ActionReq.bool_param1=answer
                     if(answer is None):
                         cancelAction=True
+                case "stackTray":
+                    level = simpledialog.askinteger("Stack Tray", "Enter the stack level")
+                    self.ActionReq.int_param1=level
+                    if(level is None):
+                        cancelAction=True
+                case "gyroGrpRot":
+                    direction = simpledialog.askinteger("Gyro Gripper Rotate", "Enter the direction to rotate (1-2):", minvalue=1, maxvalue=2)
+                    self.ActionReq.int_param1=direction
+                    if(direction is None):
+                        cancelAction=True
                 case "screwPickup":
                     screw = simpledialog.askinteger("Pick Up Screw", "Enter the screw number to pick up (1-6):", minvalue=1, maxvalue=6)
                     self.ActionReq.int_param1=screw
                     if(screw is None):
                         cancelAction=True
                 case "present2Op":
-                    side = simpledialog.askinteger("Present to Operator", "Enter the side to screw (1-2):", minvalue=1, maxvalue=2)
-                    face = simpledialog.askinteger("Present to Operator", "Enter the face to screw (1-4):", minvalue=1, maxvalue=4)
+                    side = simpledialog.askinteger("Present to Operator", "Enter the side to present (1-2):", minvalue=1, maxvalue=2)
+                    face = simpledialog.askinteger("Present to Operator", "Enter the face to present (1-4):", minvalue=1, maxvalue=4)
                     self.ActionReq.int_param1=side
                     self.ActionReq.int_param2=face
                     if(side is None or face is None):
                         cancelAction=True
+                #TODO: the Or create a crash. Investigate.
+                case "presentToScrew":
+                    side = simpledialog.askinteger("Present to Operator", "Enter the side to present (1-2):", minvalue=1, maxvalue=2)
+                    face = simpledialog.askinteger("Present to Operator", "Enter the face to present (1-4):", minvalue=1, maxvalue=4)
+                    self.ActionReq.int_param1=side
+                    self.ActionReq.int_param2=face
+                    if(side is None or face is None):
+                        cancelAction=True
+                
+
                 case "screwTight":
                     response=ScrewDialog(self.root, title="Screw Tightening Parameters")
                     if(response.result is None):
@@ -110,6 +159,8 @@ class Client_Node(Node):
                 self.functionBlockCalled=False
                 self.get_logger().info(f"[Client_node] Action cancelled by the user.")
                 self.updateResponseText("Action cancelled by the user.", isResult=False)
+                self.sequenceAborted=True
+                
             else:
                 #Ask the permission to run the function block.
                 self.send_goal_future=self.functionBlockClient.send_goal_async(self.ActionReq,feedback_callback=self.goal_feedback_callback)
@@ -131,6 +182,7 @@ class Client_Node(Node):
         if not goalHandler.accepted:
             self.get_logger().info(f"[CLIENT NODE] Action response:Not accepted")
             self.updateResponseText("Command not accepted", isResult=False)
+            self.sequenceAborted=True
             self.functionBlockCalled=False
             return
         
@@ -150,10 +202,12 @@ class Client_Node(Node):
         self.functionBlockResult=future.result().result.success
         self.functionBlockState=future.result().result.state
         self.functionBlockMsg=future.result().result.msg
+        self.sequenceAborted= not self.functionBlockResult
         self.functionBlockCalled=False
   
         self.updateLabels()  #TODO: needed?
         self.updateResponseText(self.functionBlockMsg, isResult=True)
+
 
     def goal_feedback_callback(self,feedback: CallFunctionBlock.Feedback) -> None:
         '''
@@ -225,6 +279,7 @@ class Client_Node(Node):
         self.functionBlockState="N/A"
         self.functionBlockMsg="N/A"
         self.functionBlockResult=False
+        self.sequenceAborted=False
         self.init_GUI(root)
         self.functionBlockClient=ActionClient(self,CallFunctionBlock,"CallFunctionBlock")
         while not self.functionBlockClient.wait_for_server(timeout_sec=1):

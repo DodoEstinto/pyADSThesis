@@ -120,10 +120,13 @@ def init_GUI(self, root:tk.Tk):
     ]
 
     for i in range(len(buildingBlocks)):  # Adjust number of blocks here
-        btn = tk.Button(buttonFrame,width=40 ,text=f"Calling Block {i}: {buildingBlocks[i]}", command=lambda i=buildingBlocks[i]: self.call_block(i))
+        btn = tk.Button(buttonFrame,width=40 ,text=f"{buildingBlocks[i]}", command=lambda i=buildingBlocks[i]: self.call_block(i))
         btn.pack(pady=5)
 
-    # --- ACtion Response Text Box ---
+    btn= tk.Button(buttonFrame, width=40, text="Sequence", command=self.call_sequence)
+    btn.pack(pady=5)
+
+    # --- Action Response Text Box ---
     response_label = tk.Label(buttonFrame, text="Service Response:", font=headerFont)
     response_label.pack(pady=(20, 5))
 

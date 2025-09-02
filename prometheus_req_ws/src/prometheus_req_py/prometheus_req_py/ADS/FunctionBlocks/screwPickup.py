@@ -3,6 +3,13 @@ import pyads
 import time
 from prometheus_req_interfaces.action import CallFunctionBlock
 
+'''
+
+@DEPRECATED!!!!
+
+'''
+
+
 def manageScrewPickupErrorCheck(self,goalHandler):
     '''
     Manage the error check for the screw pickup function block.
