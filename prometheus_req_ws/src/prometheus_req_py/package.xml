@@ -11,6 +11,7 @@
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>pyads</exec_depend>
   <exec_depend>getpass</exec_depend>
+  <exec_depend>requests</exec_depend>
   <depend>prometheus_req_interfaces</depend>
 
   <test_depend>ament_copyright</test_depend>

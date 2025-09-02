@@ -21,7 +21,7 @@ import ctypes
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy
 from rclpy.executors import MultiThreadedExecutor
 from copy import deepcopy
-
+import requests
 from prometheus_req_interfaces.msg import EquipmentStatus,ScrewSlot,Offset
 from prometheus_req_interfaces.action import CallFunctionBlock
 from prometheus_req_py.ADS.structures import EquipmentStatus_ctype
@@ -29,6 +29,7 @@ from prometheus_req_py.ADS.utils import reqState,getReqStateMsg,msgType,publishF
 from std_msgs.msg import Empty
 from rclpy.action import ActionServer as rclpyActionServer
 from prometheus_req_py.ADS.FunctionBlocks import *
+from prometheus_req_py.ADS.FunctionBlocks import screwTemplate
 import prometheus_req_py.ADS.checks as checks
 from functools import partial
 
@@ -72,7 +73,7 @@ class ADS_Node(Node):
         self.picture= None
         self.errorCheckEvent = False
         self.askPictureEvent = False
-        #self.timer = self.create_timer(timerPeriod, self.timer_callback)
+        self.timer = self.create_timer(timerPeriod, self.timer_callback)
         self.lastTime=time.time()
         self.actionTimerDelay=5 #seconds
         self.lastStatus=None
@@ -80,6 +81,7 @@ class ADS_Node(Node):
         
         #Initialize the function blocks management methods. Treat them as methods of the ADS_Node class.
         self.manageScrewPickup = partial(screwPickup.manageScrewPickup, self)
+        self.manageScrew = partial(screwTemplate.manageScrew, self)
         self.managePositionerRotate = partial(positionerRotate.managePositionerRotate, self)
         self.manageLoadTray = partial(loadTray.manageLoadTray, self)
         self.manageDepositTray = partial(depositTray.manageDepositTray, self)
@@ -101,7 +103,6 @@ class ADS_Node(Node):
         CLIENT_NETID = self.get_parameter('CLIENT_NETID').value
         PLC_IP= self.get_parameter('PLC_IP').value
         PLC_NET_ID = self.get_parameter('PLC_NET_ID').value
-
         pyads.open_port()
         pyads.set_local_address(CLIENT_NETID)
 
@@ -138,7 +139,7 @@ class ADS_Node(Node):
         functionBlockName=goalHandler.request.function_block_name
 
         #TODO: update as needed
-        allowedFunctionBlocks=["positionerRotate","loadTray","mrTrolleyVCheck","screwPickup"]
+        allowedFunctionBlocks=["positionerRotate","loadTray","mrTrolleyVCheck","screwPickup","screwTight"]
         if(functionBlockName    not in allowedFunctionBlocks):
             self.get_logger().info(f"[ADS_Node] Function Block {goalHandler.request.function_block_name} not allowed! Allowed function blocks are: {allowedFunctionBlocks}")
             goalHandler.abort()
@@ -181,6 +182,13 @@ class ADS_Node(Node):
             self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.request",1,pyads.PLCTYPE_BOOL)
 
             while(self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT) == reqState.ST_READY):
+                if(time.time()-self.lastTime>self.actionTimerDelay):
+                    self.lastTime=time.time()
+                    feedback_msg = CallFunctionBlock.Feedback()
+                    feedback_msg.msg="Waiting for the function block state to start..."
+                    goalHandler.publish_feedback(feedback_msg)
+                    self.get_logger().info(f"[DEBUG] Waiting for the function block state to start...")
+
                 pass
 
             #Wait the completion of the task
@@ -216,7 +224,9 @@ class ADS_Node(Node):
                 case "mrTrolleyVCheck":
                         result.msg,result.state=self.manageMrTrolleyVCheck(goalHandler)
                 case "screwPickup":
-                        result.msg,result.state=self.manageScrewPickup(goalHandler)
+                        result.msg,result.state=self.manageScrew(goalHandler,functionBlockName)
+                case "screwTight":
+                        result.msg,result.state=self.manageScrew(goalHandler,functionBlockName)
 
 
             goalHandler.succeed()
@@ -252,6 +262,16 @@ class ADS_Node(Node):
             case "screwPickup":
                 #screwType
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.screwType",req.int_param1,pyads.PLCTYPE_INT)
+            case "screwTight":
+                self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.xVisCorrTray",req.float_param1,pyads.PLCTYPE_REAL)
+                self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.yVisCorrTray",req.float_param2,pyads.PLCTYPE_REAL)
+                self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.thetaVisCorrTray",req.float_param3,pyads.PLCTYPE_REAL)
+                self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.screwArea",2 if req.bool_param1 else 1,pyads.PLCTYPE_INT)
+                self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.target2Use",req.int_param1,pyads.PLCTYPE_INT)
+                self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.focalPlane2Use",req.int_param2,pyads.PLCTYPE_INT)
+                self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.screwRecipeID",req.int_param3,pyads.PLCTYPE_BYTE)
+
+                self.get_logger().info(f"[DEBUG]Parameters for {functionBlockName} set: x:{req.float_param1}, y:{req.float_param2}, theta:{req.float_param3}, screwArea:{2 if req.bool_param1 else 1}, target2Use:{req.int_param1}, focalPlane2Use:{req.int_param2}, screwRecipeID:{req.int_param3}")
 
     def runChecks(self,functionBlockName:str) -> tuple[bool,str]:
         '''
@@ -323,6 +343,7 @@ class ADS_Node(Node):
 
         self.get_logger().info("[ADS]ASK PICTURE CALLBACK!")
         self.offset=(offset.x, offset.y, offset.theta) # Dummy value, as the actual picture handling is not implemented here.
+
         self.askPictureEvent=True
         
 
@@ -386,6 +407,7 @@ class ADS_Node(Node):
          status=self.plc.read_by_name('GVL_ATS.equipmentState',EquipmentStatus_ctype)
          statusUpdate=self.cpy_to_equipment_status_msg(status)
          self.publisher.publish(statusUpdate)
+         self.get_logger().info("[ADS_Node]First status update published.")
 
     def timer_callback(self):
         '''

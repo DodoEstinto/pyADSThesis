@@ -27,7 +27,22 @@ class msgType(IntEnum):
     ERROR_CHECK = 1
     ASKING_PICTURE = 2
 
+class roiIds(IntEnum):
+    '''
+    Enum representing the ROI IDs.
+    '''
+    P0=0
+    P1=1
+    P2=2
+    P3=3
 
+class calibrationPlanes(IntEnum):
+    '''
+    Enum representing the calibration planes.
+    '''
+    Distance_10Cm=0
+    Distance_13Cm=1
+    Distance_15Cm=2
 
 def getReqStateMsg(state: int) -> str:
     '''

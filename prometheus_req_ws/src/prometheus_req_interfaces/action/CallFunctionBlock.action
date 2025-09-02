@@ -6,6 +6,8 @@ float32 float_param1
 float32 float_param2
 float32 float_param3
 int16 int_param1
+int16 int_param2
+int16 int_param3
 ---
 bool success
 int16 state

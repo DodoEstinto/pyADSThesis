@@ -19,9 +19,9 @@ def checkLoadTray(self) -> tuple[bool,str]:
     '''
     side2Robot=self.plc.read_by_name(f"GVL_ATS.equipmentState.side2Robot",pyads.PLCTYPE_INT)
     msg=None
-    if(side2Robot != 2):
+    if(side2Robot not in (0,2)):
         msg="Tray not in the right position! Please move the tray to the right position before calling this function block."
-    return (side2Robot == 2,msg)
+    return (side2Robot in (0,2),msg)
 
 def checkScrewPickup(self) -> tuple[bool,str]:
     '''

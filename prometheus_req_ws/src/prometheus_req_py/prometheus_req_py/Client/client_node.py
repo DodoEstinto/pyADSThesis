@@ -19,13 +19,14 @@ from copy import deepcopy
 from prometheus_req_interfaces.msg import EquipmentStatus, Offset
 from prometheus_req_interfaces.action import CallFunctionBlock
 from prometheus_req_py.ADS.utils import msgType
-from prometheus_req_py.Client.utils import OkDialog
+from prometheus_req_py.Client.utils import OkDialog,ScrewDialog
 import tkinter as tk
 from tkinter import messagebox,simpledialog
 from std_msgs.msg import Empty
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy
 from functools import partial
 from prometheus_req_py.Client.GUI import client_GUI
+import requests
 
 class Client_Node(Node):
     '''
@@ -38,7 +39,7 @@ class Client_Node(Node):
         This function is called when the building block buttons are pressed.
         It sends an async request to the service server.
         '''
-
+        cancelAction=False
         #Prevent to call a second function call while the previous one is still executing.
         if not self.functionBlockCalled:
             self.functionBlockCalled=True
@@ -47,24 +48,44 @@ class Client_Node(Node):
             #based on the function called, a different parameter is asked.
             match(name):
                 case "loadTray":
-                    answer = messagebox.askyesno("Load Tray", "Load(Yes) or Unload(No) the tray?")
+                    answer = messagebox.askyesnocancel("Load Tray", "Load(Yes) or Unload(No) the tray?")
                     self.req.bool_param1=answer
+                    if(answer is None):
+                        cancelAction=True
                 case "positionerRotate":
-                    answer = messagebox.askyesno("Positioner Rotate", "Rotate clockwise(Yes) or anticlockwise(No)?")
+                    answer = messagebox.askyesnocancel("Positioner Rotate", "Rotate clockwise(Yes) or anticlockwise(No)?")
                     self.req.bool_param1=answer
+                    if(answer is None):
+                        cancelAction=True
                 case "screwPickup":
                     screw = simpledialog.askinteger("Pick Up Screw", "Enter the screw number to pick up (1-6):", minvalue=1, maxvalue=6)
                     self.req.int_param1=screw
-
-            #Ask the permission to run the function block.
-            self.send_goal_future=self.client.send_goal_async(self.req,feedback_callback=self.goal_feedback_callback)
-            #Tell where you are waiting for a response.
-            self.send_goal_future.add_done_callback(self.goal_response_callback)
-            self.get_logger().info(f"[Client_node] Done")
-        else:
-            self.get_logger().info(f"[Client_node] Function Block already called, waiting for response...")
-            self.updateResponseText("A function Block has been already called, waiting for its response...", isResult=False)
-             
+                    if(screw is None):
+                        cancelAction=True
+                case "screwTight":
+                    response=ScrewDialog(self.root, title="Screw Tightening Parameters")
+                    if(response.result is None):
+                        cancelAction=True
+                    else:
+                        self.req.float_param1=response.result["screwX"]
+                        self.req.float_param2=response.result["screwY"]
+                        self.req.float_param3=response.result["screwZ"]
+                        self.req.int_param1=response.result["targetToUse"]
+                        self.req.int_param2=response.result["focalPlane"]
+                        self.req.int_param3=response.result["screwRecipeID"]
+                        self.req.bool_param1=True if response.result["screwArea"]=="inside" else False
+            if(cancelAction):
+                self.functionBlockCalled=False
+                self.get_logger().info(f"[Client_node] Action cancelled by the user.")
+                self.updateResponseText("Action cancelled by the user.", isResult=False)
+            else:
+                #Ask the permission to run the function block.
+                self.send_goal_future=self.client.send_goal_async(self.req,feedback_callback=self.goal_feedback_callback)
+                #Tell where you are waiting for a response.
+                self.send_goal_future.add_done_callback(self.goal_response_callback)
+                self.get_logger().info(f"[Client_node] Function Block already called, waiting for response...")
+                self.updateResponseText("A function Block has been already called, waiting for its response...", isResult=False)
+                
     def goal_response_callback(self,future):
         '''
         This function is called when the action client receive a response.
@@ -117,7 +138,8 @@ class Client_Node(Node):
             case msgType.ASKING_PICTURE:
                 self.updateResponseText("Asking a photo...", isResult=False)
                 _=OkDialog(self.root, title="Take Picture", message="Press ok to take a picture!")
-                offset=self.calculate_picture_offset()
+                #TODO: to set!
+                offset=self.calculate_picture_offset(0,0,True)
                 offsetMsg=Offset()
                 offsetMsg.x=offset[0]
                 offsetMsg.y=offset[1]
@@ -183,6 +205,32 @@ class Client_Node(Node):
         self.updateLabels()
 
 
+    def calculate_picture_offset(self,calibrationPlane,roiId,findScrew) -> tuple[float,float,float]:
+            """
+            #TODO: test on real PLC!
+            Dummy function, as the actual implementation depends on the specific requirements of the application.
+            Calculate the offset of the picture.
+            :return: The offset of the picture.
+            """
+            #params={"calibrationPlane":calibrationPlane,"roiId":roiId,"findScrew":findScrew}
+            #response = requests.post(f"{ATC_IP}", json=params)
+            #data = response.json()
+            #circleFound=data["CircleFound"]
+            #translationX=data["TranslationX"]
+            #translationY=data["TranslationY"]
+            #rotation=data["Rotation"]
+            #dataValid=data["DataValid"]
+
+            #if not dataValid or not circleFound:
+            #    self.get_logger().error("[Client_node]Error in picture processing!")
+            #    #this should trigger the PLC safety measures.
+            #    #TODO:TEST!
+            #    return 99999,99999,99999
+            
+            #return translationX,translationY,rotation
+
+            #For testing purposes, we return a dummy offset.
+            return 0.9, 0.0, 0.0  # x, y, theta
 
 def main(args=None):
     rclpy.init(args=args)
@@ -222,16 +270,6 @@ def main(args=None):
 
 
 
-def calculate_picture_offset(self):
-        """
-        #TODO: test on real PLC!
-        Dummy function, as the actual implementation depends on the specific requirements of the application.
-        Calculate the offset of the picture.
-        :return: The offset of the picture.
-        """
-        #Ask via TCP/IP the offset to the ATS.
-        
-        return 0.01, 0.9, 0.01  # x, y, theta
 
 #TODO: needed?
 if __name__ == '__main__':
