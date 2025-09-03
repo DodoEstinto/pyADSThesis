@@ -27,6 +27,8 @@ class msgType(IntEnum):
     ERROR_CHECK = 1
     ASKING_PICTURE = 2
 
+
+
 class roiIds(IntEnum):
     '''
     Enum representing the ROI IDs.

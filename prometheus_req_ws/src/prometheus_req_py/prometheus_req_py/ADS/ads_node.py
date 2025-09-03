@@ -368,6 +368,15 @@ class ADS_Node(Node):
         msg_feed=CallFunctionBlock.Feedback()
         msg_feed.msg_type=msgType.ASKING_PICTURE
         msg_feed.msg=msg
+        if(goalHandler.request.function_block_name=="screwTight"):
+            msg_feed.focal_plane=goalHandler.request.int_param1
+            msg_feed.roi_id=goalHandler.request.int_param2
+            msg_feed.find_screw=True
+        elif goalHandler.request.function_block_name=="trolleyVCheck":
+            msg_feed.focal_plane=1
+            msg_feed.roi_id=1
+            msg_feed.find_screw=False
+
         goalHandler.publish_feedback(msg_feed)
         self.get_logger().info("[Debug]Waiting for the picture...")
         while(not self.askPictureEvent):

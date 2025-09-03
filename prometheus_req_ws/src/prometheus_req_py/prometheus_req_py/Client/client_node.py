@@ -19,7 +19,8 @@ from copy import deepcopy
 from prometheus_req_interfaces.msg import EquipmentStatus, Offset,ScrewSlot
 from prometheus_req_interfaces.action import CallFunctionBlock
 from prometheus_req_py.ADS.utils import msgType
-from prometheus_req_py.Client.utils import OkDialog,ScrewDialog,ScrewBayDialog
+from prometheus_req_py.Client.utils import OkDialog,ScrewDialog,ScrewBayDialog,SequenceDialog
+import prometheus_req_py.ADS.constants as ADS_CONSTANTS
 import tkinter as tk
 from tkinter import messagebox,simpledialog
 from std_msgs.msg import Empty
@@ -29,6 +30,8 @@ from prometheus_req_py.Client.GUI import client_GUI
 from prometheus_req_interfaces.srv import SetScrewBayState
 import requests
 import threading
+import urllib3
+import ast
 
 class Client_Node(Node):
     '''
@@ -40,26 +43,23 @@ class Client_Node(Node):
 
     def start_sequence(self):  
         self.inSequence=True
-        sequence=[
-            "positionerRotate", #rotate
-            "loadTray",#load
-            "gyroGrpRot",#load
-            "positionerRotate", #rotate back
-            "loadTray",#load
-            "loadTray",#load
-        ]
+
         if(not self.errorChecked):
-            self.sequence = iter(sequence)
+            choosenSequence=SequenceDialog(self.root,title="Starting Sequence",options=ADS_CONSTANTS.BUILDING_BLOCKS).result
+            self.sequence = iter(choosenSequence)
         else:
             self.get_logger().info("[Client_node] Sequence interrupted because error check, resuming sequence")
             self.updateResponseText("Sequence interrupted because error check, resuming sequence.", isResult=False)
 
-        if(len(sequence)<1):
+        #problematic TODO:check
+        '''
+        if(len(self.sequence)<1):
             self.get_logger().info("[Client_node] Empty sequence!")
             self.updateResponseText("Sequence empty", isResult=False)
             self.inSequence=False
             return
-
+        '''
+        
 
         self.errorChecked=False
         self.sequenceAborted = False
@@ -89,12 +89,13 @@ class Client_Node(Node):
         try:
             block = next(self.sequence)
             self.get_logger().info(f"[Client_node] Calling Block {block} in the sequence")
-            self.call_block(block, override=True)  # asincrona
+            self.call_block(block, override=True)
             self.call_next_block()
         except StopIteration:
             self.inSequence=False
             self.functionBlockCalled = False
             self.get_logger().info("[Client_node] Sequence completed!")
+            self.updateResponseText("Sequence completed!", isResult=False)
 
 
 
@@ -245,13 +246,13 @@ class Client_Node(Node):
         self.updateResponseText(self.functionBlockMsg, isResult=True)
 
 
-    def goal_feedback_callback(self,feedback: CallFunctionBlock.Feedback) -> None:
+    def goal_feedback_callback(self,feedbackMsg: CallFunctionBlock.Feedback) -> None:
         '''
         This function is called when the action client receive a feedback.
         :feedback: The feedback received from the action server.
         '''
-        feedbackMsgType=feedback.feedback.msg_type
-        self.functionBlockMsg=feedback.feedback.msg
+        feedbackMsgType=feedbackMsg.feedback.msg_type
+        self.functionBlockMsg=feedbackMsg.feedback.msg
         #Based on the msg type manage the feedback differently.
         #Refer to msgType documentation for more informations about it
         match feedbackMsgType:
@@ -265,8 +266,11 @@ class Client_Node(Node):
             case msgType.ASKING_PICTURE:
                 self.updateResponseText("Asking a photo...", isResult=False)
                 _=OkDialog(self.root, title="Take Picture", message="Press ok to take a picture!")
-                #TODO: to set!
-                offset=self.calculate_picture_offset(0,0,True)
+                focalPlane=feedbackMsg.feedback.short_param1
+                roiID=feedbackMsg.feedback.short_param2
+                findScrew=feedbackMsg.feedback.bool_param1
+                self.get_logger().info(f"[Client_node] Received picture request with focalPlane:{focalPlane}, roiID:{roiID}, findScrew:{findScrew}")
+                offset=self.calculate_picture_offset(focalPlane,roiID,findScrew)
                 offsetMsg=Offset()
                 offsetMsg.x=offset[0]
                 offsetMsg.y=offset[1]
@@ -335,6 +339,7 @@ class Client_Node(Node):
         self.ActionReq=CallFunctionBlock.Goal()
         self.stateSub  # prevent unused variable warning
 
+
     def state_update_callback(self, msg: EquipmentStatus) -> None:
         '''
         Called each time the plc's equipmentstate changes.
@@ -352,20 +357,39 @@ class Client_Node(Node):
 
     def calculate_picture_offset(self,calibrationPlane,roiId,findScrew) -> tuple[float,float,float]:
             """
-            #TODO: test on real PLC!
             Dummy function, as the actual implementation depends on the specific requirements of the application.
             Calculate the offset of the picture.
             :return: The offset of the picture.
             """
-            #params={"calibrationPlane":calibrationPlane,"roiId":roiId,"findScrew":findScrew}
-            #response = requests.post(f"{ATC_IP}", json=params)
-            #data = response.json()
-            #circleFound=data["CircleFound"]
-            #translationX=data["TranslationX"]
-            #translationY=data["TranslationY"]
-            #rotation=data["Rotation"]
-            #dataValid=data["DataValid"]
+            ATS_IP = '10.10.10.100'
+            self.get_logger().info(f"[Client_node]Requesting picture offset from ATS at {ATS_IP}")
+            parameters={"calibrationPlane":calibrationPlane,"roiId":roiId,"findScrew":findScrew}
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            try:
+                response = requests.get(f'https://{ATS_IP}/GetScrewCorrection',params=parameters,verify=False).json()
+            except Exception as e:
+                self.get_logger().error(f"Error occurred: {e}")
+                #TODO: TEST!
+                # this should trigger the PLC safety measures.
+                return 99999.9,99999.9,99999.9
+            self.get_logger().info(f"[Client_node]DATA IS: {response}")
+            if(type(response) is str):
+                response=ast.literal_eval(response.replace('false',"False").replace('true','True'))
+            self.get_logger().info(f"[Client_node]DATA IS: {response}")
 
+            dataValid=response["DataValid"]
+            if(dataValid is False):
+                self.get_logger().error("[Client_node]Error in picture processing!")
+                return 9999.9,99999.9,99999.9
+            circleFound=response["CircleFound"]
+            if(circleFound is False):
+                self.get_logger().error("[Client_node]Error in picture processing: Circle not found!")
+                return 99999.9,99999.9,99999.9
+            translationX=response["TranslationX"]
+            translationY=response["TranslationY"]
+            rotation=response["Rotation"]
+
+            self.get_logger().info(f"[Client_node]Picture offset response: {response}")
             #if not dataValid or not circleFound:
             #    self.get_logger().error("[Client_node]Error in picture processing!")
             #    #this should trigger the PLC safety measures.
@@ -374,8 +398,7 @@ class Client_Node(Node):
             
             #return translationX,translationY,rotation
 
-            #For testing purposes, we return a dummy offset.
-            return 0.9, 0.0, 0.0  # x, y, theta
+            return translationX, translationY, rotation
 
 def main(args=None):
     rclpy.init(args=args)
