@@ -5,7 +5,7 @@ class OkDialog(tk.Toplevel):
         super().__init__(parent)
         self.result = False  
         self.title(title)
-        self.geometry("300x120")
+        self.geometry("450x160")
         self.resizable(False, False)
 
         self.label = tk.Label(self, text=message, wraplength=280)

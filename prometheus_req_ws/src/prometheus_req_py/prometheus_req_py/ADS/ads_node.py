@@ -182,7 +182,10 @@ class ADS_Node(Node):
             #if the preconditions are not met, the goal is aborted.
             if(not check):
                 self.get_logger().info(f"[DEBUG]Checks failed for {functionBlockName}, aborting goal.")
-                self.publishFeedback(goalHandler,msg,0)
+                msgFeed=CallFunctionBlock.Feedback()
+                msgFeed.msg_type=msgType.ERROR_CHECK
+                msgFeed.msg=msg
+                goalHandler.publish_feedback(msgFeed)
                 self.get_logger().info(f"[DEBUG]About to abort")
                 goalHandler.abort()
                 result.success=False

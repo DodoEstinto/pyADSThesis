@@ -28,6 +28,7 @@ from functools import partial
 from prometheus_req_py.Client.GUI import client_GUI
 from prometheus_req_interfaces.srv import SetScrewBayState
 import requests
+import threading
 
 class Client_Node(Node):
     '''
@@ -35,44 +36,78 @@ class Client_Node(Node):
     It provides a simplified interface for monitoring and controlling the system.
     '''
 
-    def call_sequence(self):
-        '''
-        Do a complete sequence of function blocks
-        '''
-        self.functionBlockCalled=True
+  
 
+    def start_sequence(self):  
+        self.inSequence=True
         sequence=[
-            "loadTray",#load
             "positionerRotate", #rotate
+            "loadTray",#load
+            "gyroGrpRot",#load
             "positionerRotate", #rotate back
-            "pickupTray", 
-            "present2Op",
-            "presentToScrew",
-            "pickupScrew",
-            "screwTight",
-            "depositTray",
-            "loadTray"]
-        
-        for block in sequence:
-            if(self.sequenceAborted):
-                self.get_logger().info(f"[Client_node] Sequence aborted, stopping...")
-                self.sequenceAborted=False
-                break
-            self.call_block(block)
+            "loadTray",#load
+            "loadTray",#load
+        ]
+        if(not self.errorChecked):
+            self.sequence = iter(sequence)
+        else:
+            self.get_logger().info("[Client_node] Sequence interrupted because error check, resuming sequence")
+            self.updateResponseText("Sequence interrupted because error check, resuming sequence.", isResult=False)
 
-        #in case the abort in on the last block, we need to reset the flag.
-        self.sequenceAborted=False
-        self.functionBlockCalled=False
+        if(len(sequence)<1):
+            self.get_logger().info("[Client_node] Empty sequence!")
+            self.updateResponseText("Sequence empty", isResult=False)
+            self.inSequence=False
+            return
 
-    def call_block(self, name:str) -> None:
+
+        self.errorChecked=False
+        self.sequenceAborted = False
+        self.goNext=True
+        if(not self.functionBlockCalled):
+            thr = threading.Thread(target=self.call_next_block, args=(), kwargs={})
+            thr.start()
+        else:
+            self.get_logger().info("[Client_node] Cannot start sequence, another function block is running.")
+            self.updateResponseText("Cannot start sequence, another function block is running.", isResult=False)
+            self.inSequence=False
+
+    def call_next_block(self):
+        if self.sequenceAborted:
+            self.get_logger().info("[Client_node] Sequence aborted, stopping...")
+            self.sequenceAborted = False
+            self.functionBlockCalled = False
+            return
+        #TODO: aggiungere semaforo
+        while(not self.goNext):
+            pass
+        if(self.errorChecked):
+            self.inSequence=False
+            self.functionBlockCalled=False
+            return
+        self.goNext=False
+        try:
+            block = next(self.sequence)
+            self.get_logger().info(f"[Client_node] Calling Block {block} in the sequence")
+            self.call_block(block, override=True)  # asincrona
+            self.call_next_block()
+        except StopIteration:
+            self.inSequence=False
+            self.functionBlockCalled = False
+            self.get_logger().info("[Client_node] Sequence completed!")
+
+
+
+    def call_block(self, name:str,override=False) -> None:
         '''
         This function is called when the building block buttons are pressed.
         It sends an async request to the service server.
         :param name: The name of the function block to call.
+        :param override: If True, it forces the call even if another function block is running.
         '''
         cancelAction=False
         #Prevent to call a second function call while the previous one is still executing.
-        if not self.functionBlockCalled:
+        if override or not self.functionBlockCalled:
             self.functionBlockCalled=True
             self.get_logger().info(f"[Client_node] Calling Block {name}")
             self.ActionReq.function_block_name=name
@@ -160,14 +195,14 @@ class Client_Node(Node):
                 self.get_logger().info(f"[Client_node] Action cancelled by the user.")
                 self.updateResponseText("Action cancelled by the user.", isResult=False)
                 self.sequenceAborted=True
-                
-            else:
-                #Ask the permission to run the function block.
-                self.send_goal_future=self.functionBlockClient.send_goal_async(self.ActionReq,feedback_callback=self.goal_feedback_callback)
-                #Tell where you are waiting for a response.
-                self.send_goal_future.add_done_callback(self.goal_response_callback)
-                self.get_logger().info(f"[Client_node] Function Block already called, waiting for response...")
-                self.updateResponseText("A function Block has been already called, waiting for its response...", isResult=False)
+                return
+            #Ask the permission to run the function block.
+            self.send_goal_future=self.functionBlockClient.send_goal_async(self.ActionReq,feedback_callback=self.goal_feedback_callback)
+            #Tell where you are waiting for a response.
+            self.send_goal_future.add_done_callback(self.goal_response_callback)
+        else:
+            self.get_logger().info(f"[Client_node] Function Block already called, waiting for response...")
+            self.updateResponseText("A function Block has been already called, waiting for its response...", isResult=False)
 
     def goal_response_callback(self,future: rclpy.Future) -> None:
         '''
@@ -184,6 +219,7 @@ class Client_Node(Node):
             self.updateResponseText("Command not accepted", isResult=False)
             self.sequenceAborted=True
             self.functionBlockCalled=False
+            self.goNext=True
             return
         
         self.get_logger().info(f"[CLIENT NODE] Action response: Accepted")
@@ -204,7 +240,7 @@ class Client_Node(Node):
         self.functionBlockMsg=future.result().result.msg
         self.sequenceAborted= not self.functionBlockResult
         self.functionBlockCalled=False
-  
+        self.goNext=True
         self.updateLabels()  #TODO: needed?
         self.updateResponseText(self.functionBlockMsg, isResult=True)
 
@@ -223,6 +259,9 @@ class Client_Node(Node):
                 self.updateResponseText("Error check in progress...", isResult=False)
                 _=OkDialog(self.root, title="Error Check", message=self.functionBlockMsg)
                 self.errorCheckPub.publish(Empty())
+                if(self.inSequence):
+                    self.get_logger().info("[Client_node] Error check in sequence, aborting sequence!")
+                    self.errorChecked=True
             case msgType.ASKING_PICTURE:
                 self.updateResponseText("Asking a photo...", isResult=False)
                 _=OkDialog(self.root, title="Take Picture", message="Press ok to take a picture!")
@@ -279,7 +318,10 @@ class Client_Node(Node):
         self.functionBlockState="N/A"
         self.functionBlockMsg="N/A"
         self.functionBlockResult=False
+        self.inSequence=False
         self.sequenceAborted=False
+        self.goNext=False
+        self.errorChecked=False
         self.init_GUI(root)
         self.functionBlockClient=ActionClient(self,CallFunctionBlock,"CallFunctionBlock")
         while not self.functionBlockClient.wait_for_server(timeout_sec=1):
