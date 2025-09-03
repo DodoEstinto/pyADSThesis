@@ -65,8 +65,9 @@ class Client_Node(Node):
         self.sequenceAborted = False
         self.goNext=True
         if(not self.functionBlockCalled):
-            thr = threading.Thread(target=self.call_next_block, args=(), kwargs={})
-            thr.start()
+            #thr = threading.Thread(target=self.call_next_block, args=(), kwargs={})
+            #thr.start()
+            self.root.after(0,self.call_next_block)
         else:
             self.get_logger().info("[Client_node] Cannot start sequence, another function block is running.")
             self.updateResponseText("Cannot start sequence, another function block is running.", isResult=False)
@@ -80,7 +81,7 @@ class Client_Node(Node):
             return
         #TODO: aggiungere semaforo
         while(not self.goNext):
-            pass
+            self.root.update()  # keep processing Tk events
         if(self.errorChecked):
             self.inSequence=False
             self.functionBlockCalled=False
@@ -141,16 +142,16 @@ class Client_Node(Node):
                         cancelAction=True
                 case "present2Op":
                     side = simpledialog.askinteger("Present to Operator", "Enter the side to present (1-2):", minvalue=1, maxvalue=2)
-                    face = simpledialog.askinteger("Present to Operator", "Enter the face to present (1-4):", minvalue=1, maxvalue=4)
                     self.ActionReq.int_param1=side
+                    face = simpledialog.askinteger("Present to Operator", "Enter the face to present (1-4):", minvalue=1, maxvalue=4)
                     self.ActionReq.int_param2=face
                     if(side is None or face is None):
                         cancelAction=True
                 #TODO: the Or create a crash. Investigate.
                 case "presentToScrew":
                     side = simpledialog.askinteger("Present to Operator", "Enter the side to present (1-2):", minvalue=1, maxvalue=2)
-                    face = simpledialog.askinteger("Present to Operator", "Enter the face to present (1-4):", minvalue=1, maxvalue=4)
                     self.ActionReq.int_param1=side
+                    face = simpledialog.askinteger("Present to Operator", "Enter the face to present (1-4):", minvalue=1, maxvalue=4)
                     self.ActionReq.int_param2=face
                     if(side is None or face is None):
                         cancelAction=True

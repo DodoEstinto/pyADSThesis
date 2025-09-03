@@ -3,16 +3,16 @@ import pyads
 import time
 from prometheus_req_interfaces.action import CallFunctionBlock
 
-def manageScrewErrorCheck(self,goalHandler,functionBlockName:str):
+def manageScrewErrorCheck(self):
     '''
     Manage the error check for the screw pickup and tight functions block.
-    :param goalHandler: The goal handler to manage the request.
     :return: A tuple containing the message and the state of the function block.
     '''
     funcState=reqState.ST_ERROR_CHECK
+    functionBlockName=self.goalHandler.request.function_block_name
     self.get_logger().info(f"[ADS_Node]Checking {functionBlockName} Error Check...")
     #this refers to the ads_node.error_check(...) method
-    self.error_check(f"{functionBlockName} Error Check",goalHandler)
+    self.error_check(f"{functionBlockName} Error Check")
     self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.errorAck",1,pyads.PLCTYPE_BOOL)
     self.get_logger().info(f"[ADS_Node]ACK sent for {functionBlockName} Error Check!") 
     while(funcState==reqState.ST_ERROR_CHECK):
@@ -21,21 +21,21 @@ def manageScrewErrorCheck(self,goalHandler,functionBlockName:str):
     return msg,funcState
 
 #TODO: once the photo is taken, the plc do a correction and then ask for a new photo, and so on. Remember to handle this.
-def manageScrewLogic(self,goalHandler,funcState,functionBlockName:str):
+def manageScrewLogic(self,funcState):
     '''
     Manage the logic of the screw pickup and tight functions block.
-    :param goalHandler: The goal handler to manage the request.
     :param funcState: The current state of the function block.
     '''
 
     self.get_logger().info(f"[DEBUG]Logic funcState:{funcState}")
+    functionBlockName=self.goalHandler.request.function_block_name
     if funcState == reqState.ST_REQ_PENDING | reqState.ST_READY:
         self.get_logger().info("[Debug]Waiting for the picture request...")
         while(not self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.takePicture",pyads.PLCTYPE_BOOL)):
             pass
         self.get_logger().info("[Debug]Picture request received, asking for the picture...")
         #this refers to the ads_node.askPicture(...) method
-        x,y,theta=self.askPicture("Asking Picture",goalHandler)
+        x,y,theta=self.askPicture("Asking Picture")
         self.get_logger().info(f"[Debug]Picture received with offsets: x={x}, y={y}, theta={theta}")
         self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.xVisCorrTray",x,pyads.PLCTYPE_REAL)
         self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.yVisCorrTray",y,pyads.PLCTYPE_REAL)
@@ -50,7 +50,7 @@ def manageScrewLogic(self,goalHandler,funcState,functionBlockName:str):
                     self.lastTime=time.time()
                     feedback_msg = CallFunctionBlock.Feedback()
                     feedback_msg.msg="Waiting for pickupScrew state to update..."
-                    goalHandler.publish_feedback(feedback_msg)
+                    self.goalHandler.publish_feedback(feedback_msg)
                     self.get_logger().info(f"[DEBUG]Still waiting for pickupScrew state to update...")
 
         self.get_logger().info(f"[DEBUG]{functionBlockName} state updated, waiting for the pickup to finish...")
@@ -61,11 +61,12 @@ def manageScrewLogic(self,goalHandler,funcState,functionBlockName:str):
                                                                                                 reqState.ST_EXECUTING_2,
                                                                                                 reqState.ST_EXECUTING_3,
                                                                                                 reqState.ST_EXECUTING_4)):
+            #TODO: swap with the util function.
             if(time.time()-self.lastTime>self.actionTimerDelay):
                     self.lastTime=time.time()
                     feedback_msg = CallFunctionBlock.Feedback()
                     feedback_msg.msg="Waiting for the screw pickup..."
-                    goalHandler.publish_feedback(feedback_msg)
+                    self.goalHandler.publish_feedback(feedback_msg)
                     self.get_logger().info(f"[DEBUG]Still executing pickupScrew...")
 
 
@@ -74,14 +75,13 @@ def manageScrewLogic(self,goalHandler,funcState,functionBlockName:str):
         self.get_logger().info(f"[DEBUG]{functionBlockName} completed with msg: {msg}")
 
 
-def manageScrew(self,goalHandler,functionBlockName:str) -> tuple[str,int]:
+def manageScrew(self) -> tuple[str,int]:
     '''
     Manage the individual behaviour of the screw pickup and tight functions block.
-    :param goalHandler: The goal handler to manage the request.
     :return: A tuple containing the message and the state of the function block.
     '''
 
-
+    functionBlockName=self.goalHandler.request.function_block_name
     funcState=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT)
     self.get_logger().info(f"[DEBUG]funcState:{funcState}")
 
@@ -102,7 +102,7 @@ def manageScrew(self,goalHandler,functionBlockName:str) -> tuple[str,int]:
         
         if(funcState == reqState.ST_REQ_PENDING):
             self.get_logger().info(f"[DEBUG]Inside pending if funcState:{funcState}")
-            manageScrewLogic(self,goalHandler,funcState,functionBlockName)
+            manageScrewLogic(self,funcState)
             self.get_logger().info(f"[DEBUG]Exiting if funcState:{funcState}")
         funcState= self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT)
 
@@ -112,7 +112,7 @@ def manageScrew(self,goalHandler,functionBlockName:str) -> tuple[str,int]:
             funcState=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT)
 
     if(funcState == reqState.ST_ERROR_CHECK):
-        msg,funcState=manageScrewErrorCheck(self,goalHandler,functionBlockName)
+        msg,funcState=manageScrewErrorCheck(self)
         self.get_logger().info(f"[DEBUG]Exiting  {functionBlockName}...")
     else:
         msg=getReqStateMsg(funcState)
