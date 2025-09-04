@@ -1,16 +1,16 @@
-BUILDING_BLOCKS = [
-        "loadTray",
-        "pickUpTray",
-        "depositTray",
-        "srHoming",
-        "mrHoming",
-        "mrTrolleyVCheck",
-        "gyroGrpRot",
-        "screwTight",
-        "screwPickup",
-        "presentToScrew",
-        "positionerRotate",
-        "stackTray",
-        "present2Op",
-        "setScrewBayState"
-    ]
+BUILDING_BLOCKS =[
+    "depositTray",
+    "gyroGrpRot",
+    "loadTray",
+    "mrHoming",
+    "mrTrolleyVCheck",
+    "pickUpTray",
+    "positionerRotate",
+    "present2Op",
+    "presentToScrew",
+    "screwPickup",
+    "screwTight",
+    "setScrewBayState",
+    "srHoming",
+    "stackTray"
+]
