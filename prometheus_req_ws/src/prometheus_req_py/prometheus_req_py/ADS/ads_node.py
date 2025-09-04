@@ -129,12 +129,12 @@ class ADS_Node(Node):
         self.plc= pyads.Connection(PLC_NET_ID, pyads.PORT_TC3PLC1, PLC_IP)
         self.plc.open()
         
+        #Set a notification on the equipment status to publish it on a topic.
         statusMemory=pyads.NotificationAttrib(ctypes.sizeof(EquipmentStatus_ctype))#ctypes.sizeof(EquipmentStatus_ctype)
-
         self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
 
-        #TODO: test with real plc.
         self.first_update()
+        self.plc.write_by_name(f"GVL_ATS.requests.loadTray.errorAck",True,pyads.PLCTYPE_BOOL)
 
         
     def block_execute_callback(self,goalHandler):
@@ -182,7 +182,10 @@ class ADS_Node(Node):
             #if the preconditions are not met, the goal is aborted.
             if(not check):
                 self.get_logger().info(f"[DEBUG]Checks failed for {functionBlockName}, aborting goal.")
-                self.publishFeedback(goalHandler,msg,0)
+                msgFeed=CallFunctionBlock.Feedback()
+                msgFeed.msg_type=msgType.ERROR_CHECK
+                msgFeed.msg=msg
+                goalHandler.publish_feedback(msgFeed)
                 self.get_logger().info(f"[DEBUG]About to abort")
                 goalHandler.abort()
                 result.success=False
@@ -248,9 +251,9 @@ class ADS_Node(Node):
                 case "mrTrolleyVCheck":
                         result.msg,result.state=self.manageMrTrolleyVCheck(goalHandler)
                 case "screwPickup":
-                        result.msg,result.state=self.manageScrew(goalHandler,functionBlockName)
+                        result.msg,result.state=self.manageScrew(goalHandler)
                 case "screwTight":
-                        result.msg,result.state=self.manageScrew(goalHandler,functionBlockName)
+                        result.msg,result.state=self.manageScrew(goalHandler)
                 case "present2Op":
                         result.msg,result.state=self.managePresent(goalHandler)
                 case "presentToScrew":
@@ -358,12 +361,16 @@ class ADS_Node(Node):
         self.errorCheckEvent=False
 
 
-    def askPicture(self,msg,goalHandler):
+    def askPicture(self,goalHandler,msg):
         '''
         Handle the ask picture action.
         '''
         msg_feed=CallFunctionBlock.Feedback()
-        msg_feed.msg_type=msgType.ASKING_PICTURE
+        if(goalHandler.request.function_block_name=="screwPickup" or goalHandler.request.function_block_name=="screwTight"):
+            msg_feed.msg_type=msgType.ASK_PICTURE_SCREW
+        else:
+            msg_feed.msg_type=msgType.ASK_PICTURE_VCHECK
+
         msg_feed.msg=msg
         goalHandler.publish_feedback(msg_feed)
         self.get_logger().info("[Debug]Waiting for the picture...")
@@ -371,8 +378,9 @@ class ADS_Node(Node):
             #rclpy.spin_once(self)
             pass
         self.askPictureEvent=False
-        return self.offset
-    
+        #we don't need data_valid for now
+        return self.offset[1:]
+
 
     def askPicture_callback(self, offset: Offset):
         """
@@ -381,7 +389,7 @@ class ADS_Node(Node):
         """
 
         self.get_logger().info("[ADS]ASK PICTURE CALLBACK!")
-        self.offset=(offset.x, offset.y, offset.theta) # Dummy value, as the actual picture handling is not implemented here.
+        self.offset=(offset.data_valid,offset.x, offset.y, offset.theta)
 
         self.askPictureEvent=True
         

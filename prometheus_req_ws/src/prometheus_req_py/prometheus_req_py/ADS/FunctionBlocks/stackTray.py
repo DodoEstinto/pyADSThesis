@@ -4,7 +4,7 @@ import pyads
 def manageStackTray(self,goalHandler) -> tuple[str,int]:
     '''
     Manage the individual behaviour of the stack tray function block.
-    :param goalHandler: The goal handler to manage the request.
+    :goalHandler: The goal handler for the request.
     :return: A tuple containing the message and the state of the function block.
     '''
 
@@ -21,4 +21,4 @@ def manageStackTray(self,goalHandler) -> tuple[str,int]:
         msg="Error check solved"
     else:
         msg=getReqStateMsg(funcState)
-        return msg,funcState
+    return msg,funcState

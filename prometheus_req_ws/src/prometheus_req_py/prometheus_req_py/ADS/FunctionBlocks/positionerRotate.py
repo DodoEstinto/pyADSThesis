@@ -4,7 +4,7 @@ import pyads
 def managePositionerRotate(self,goalHandler) -> tuple[str,int]:
     '''
     Manage the individual behaviour of the positioner rotate function block.
-    :param goalHandler: The goal handler to manage the request.
+    :goalHandler: The goal handler for the request.
     :return: A tuple containing the message and the state of the function block.
     '''
     #TODO:controllare che state serva veramente (non penso)
@@ -19,7 +19,7 @@ def managePositionerRotate(self,goalHandler) -> tuple[str,int]:
         self.get_logger().info("[ADS_Node]ACK sent for Positioner Rotate Error Check!") 
         #Wait for the error check to be solved.
         while(funcState==reqState.ST_ERROR_CHECK):
-            funcState=self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.State",pyads.PLCTYPE_INT)
+            funcState=self.plc.read_by_name(f"GVL_ATS.requests.positionerRotate.State",pyads.PLCTYPE_INT)
         msg="Error check solved"
     else:
         msg=getReqStateMsg(funcState)

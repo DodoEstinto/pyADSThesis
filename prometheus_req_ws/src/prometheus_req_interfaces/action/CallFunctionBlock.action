@@ -15,5 +15,6 @@ string msg
 ---
 int8 msg_type
 string msg
-
-
+int8 short_param1
+int8 short_param2
+bool bool_param1

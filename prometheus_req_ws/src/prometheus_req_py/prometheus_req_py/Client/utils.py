@@ -5,7 +5,7 @@ class OkDialog(tk.Toplevel):
         super().__init__(parent)
         self.result = False  
         self.title(title)
-        self.geometry("300x120")
+        self.geometry("450x160")
         self.resizable(False, False)
 
         self.label = tk.Label(self, text=message, wraplength=280)
@@ -32,9 +32,6 @@ class ScrewDialog(simpledialog.Dialog):
         tk.Label(master, text="Target to Use:").grid(row=4, column=0, sticky="w")
         tk.Label(master, text="Focal Plane:").grid(row=5, column=0, sticky="w")
         tk.Label(master, text="Screw Recipe ID:").grid(row=6, column=0, sticky="w")
-
-        self.entry_target = tk.Entry(master)
-        self.entry_target.grid(row=4, column=1)
 
         self.entry_x = tk.Entry(master)
         self.entry_y = tk.Entry(master)
@@ -141,3 +138,51 @@ class ScrewBayDialog(simpledialog.Dialog):
                 self.result.append(slot)
             except ValueError:
                 self.result.append(None)  # handle invalid entries
+
+
+class SequenceDialog(simpledialog.Dialog):
+    def __init__(self, parent,title="Screw Bay Editor",options=[]):
+        self.options = options
+        super().__init__(parent, title)
+       
+
+    def body(self, root):
+        self.root = root
+        
+
+        # listbox
+        frame_left = tk.Frame(root)
+        frame_left.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+
+        scrollbar = tk.Scrollbar(frame_left)
+        scrollbar.pack(side="right", fill="y")
+
+        self.listbox = tk.Listbox(frame_left, yscrollcommand=scrollbar.set, width=40, height=20)
+        self.listbox.pack(side="left", fill="both", expand=True)
+        scrollbar.config(command=self.listbox.yview)
+
+        # selection and buttons
+        frame_right = tk.Frame(root)
+        frame_right.pack(side="right", fill="y", padx=10, pady=10)
+
+        tk.Label(frame_right, text="Seleziona un'opzione:").pack(pady=5)
+
+        self.selected = tk.StringVar(value=self.options[0])
+        self.dropdown = tk.OptionMenu(frame_right, self.selected, self.options[0], *self.options)
+        self.dropdown.pack(pady=5)
+
+        self.add_button = tk.Button(frame_right, text="Aggiungi", command=self.add_to_list)
+        self.add_button.pack(pady=5)
+
+        return
+    
+    def add_to_list(self):
+        item = self.selected.get()
+        self.listbox.insert("end", item)
+
+    def apply(self):
+        self.result = self.listbox.get(0, tk.END) 
+ 
+
+'''
+'''

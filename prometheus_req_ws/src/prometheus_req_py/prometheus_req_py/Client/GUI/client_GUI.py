@@ -123,7 +123,7 @@ def init_GUI(self, root:tk.Tk):
         btn = tk.Button(buttonFrame,width=40 ,text=f"{buildingBlocks[i]}", command=lambda i=buildingBlocks[i]: self.call_block(i))
         btn.pack(pady=5)
 
-    btn= tk.Button(buttonFrame, width=40, text="Sequence", command=self.call_sequence)
+    btn= tk.Button(buttonFrame, width=40, text="Sequence", command=self.start_sequence)
     btn.pack(pady=5)
 
     # --- Action Response Text Box ---

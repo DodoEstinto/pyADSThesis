@@ -5,7 +5,6 @@ import pyads
 def manageDepositTray(self,goalHandler) -> tuple[str,int]:
     '''
     Manage the individual behaviour of the deposit tray function block.
-    :param goalHandler: The goal handler to manage the request.
     :return: A tuple containing the message and the state of the function block.
     '''
 
@@ -18,8 +17,8 @@ def manageDepositTray(self,goalHandler) -> tuple[str,int]:
         self.error_check("Deposit Tray Error Check",goalHandler)
         self.plc.write_by_name("GVL_ATS.requests.depositTray.errorAck",1,pyads.PLCTYPE_BOOL)
         while(funcState==reqState.ST_ERROR_CHECK):
-            funcState=self.plc.read_by_name(f"GVL_ATS.requests.{goalHandler.request.function_block_name}.state",pyads.PLCTYPE_INT)
+            funcState=self.plc.read_by_name(f"GVL_ATS.requests.depositTray.state",pyads.PLCTYPE_INT)
         msg="Error check solved"
     else:
         msg=getReqStateMsg(funcState)
-        return msg,funcState
+    return msg,funcState
