@@ -14,7 +14,7 @@ def manageMrTrolleyVCheck(self,goalHandler):
     self.get_logger().info(f"funcState:{funcState}")
     match funcState:
         case reqState.ST_ERROR_CHECK:
-            msg,funcState=self.manageMrTrolleyVCheckErrorCheck()
+            msg,funcState=self.manageMrTrolleyVCheckErrorCheck(goalHandler)
         case reqState.ST_REQ_PENDING | reqState.ST_READY:
             self.get_logger().info("[Debug]Waiting for the picture request...")
             # Wait for the picture request to be sent.

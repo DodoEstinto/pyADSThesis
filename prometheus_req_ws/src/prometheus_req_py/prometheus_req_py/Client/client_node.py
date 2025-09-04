@@ -367,7 +367,7 @@ class Client_Node(Node):
         self.updateLabels()
 
 
-    def calculate_picture_offset(self,askedAction,calibrationPlane=0,roiId=0,findScrew=False) -> tuple[float,float,float]:
+    def calculate_picture_offset(self,askedAction,calibrationPlane=0,roiId=0,findScrew=False) -> tuple[bool,float,float,float]:
             """
             Dummy function, as the actual implementation depends on the specific requirements of the application.
             Calculate the offset of the picture.

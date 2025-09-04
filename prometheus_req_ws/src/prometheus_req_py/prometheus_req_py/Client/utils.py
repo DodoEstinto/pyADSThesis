@@ -168,7 +168,7 @@ class SequenceDialog(simpledialog.Dialog):
         tk.Label(frame_right, text="Seleziona un'opzione:").pack(pady=5)
 
         self.selected = tk.StringVar(value=self.options[0])
-        self.dropdown = tk.OptionMenu(frame_right, self.selected, self.options[0], *self.options)
+        self.dropdown = tk.OptionMenu(frame_right, self.selected, self.options[0], *self.options[1:])
         self.dropdown.pack(pady=5)
 
         self.add_button = tk.Button(frame_right, text="Aggiungi", command=self.add_to_list)
@@ -183,6 +183,3 @@ class SequenceDialog(simpledialog.Dialog):
     def apply(self):
         self.result = self.listbox.get(0, tk.END) 
  
-
-'''
-'''
