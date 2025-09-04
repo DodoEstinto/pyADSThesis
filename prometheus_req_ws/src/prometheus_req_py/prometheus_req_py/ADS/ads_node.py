@@ -21,7 +21,6 @@ import ctypes
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy
 from rclpy.executors import MultiThreadedExecutor
 from copy import deepcopy
-import requests
 from prometheus_req_interfaces.msg import EquipmentStatus,ScrewSlot,Offset
 from prometheus_req_interfaces.srv import SetScrewBayState
 from prometheus_req_interfaces.action import CallFunctionBlock
@@ -43,14 +42,13 @@ class ADS_Node(Node):
         Initialize the ADS Node.
         '''
         super().__init__('ads_node')
-        #self.init_s_time=time.time_ns()
+        self.init_s_time=time.time_ns()
         #always drop old msg in case of a slowdonw. Keep the newest.
         stateQos=QoSProfile(
             depth=1,
             durability=QoSDurabilityPolicy.TRANSIENT_LOCAL
         )
         self.statePub = self.create_publisher(EquipmentStatus, 'state',qos_profile=stateQos)
-        timerPeriod = 1  # seconds
         self.actionServer= rclpyActionServer(self,CallFunctionBlock,
                                              "CallFunctionBlock",
                                              self.block_execute_callback,)
@@ -83,6 +81,7 @@ class ADS_Node(Node):
         self.picture= None
         self.errorCheckEvent = False
         self.askPictureEvent = False
+        #timerPeriod = 1  # seconds
         #self.timer = self.create_timer(timerPeriod, self.timer_callback)
         self.lastTime=time.time()
         self.actionTimerDelay=3 #seconds
@@ -90,7 +89,6 @@ class ADS_Node(Node):
 
         
         #Initialize the function blocks management methods. Treat them as methods of the ADS_Node class.
-        self.manageScrewPickup = partial(screwPickup.manageScrewPickup, self)
         self.manageScrew = partial(screwTemplate.manageScrew, self)
         self.managePositionerRotate = partial(positionerRotate.managePositionerRotate, self)
         self.manageLoadTray = partial(loadTray.manageLoadTray, self)
@@ -134,7 +132,6 @@ class ADS_Node(Node):
         self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
 
         self.first_update()
-        self.plc.write_by_name(f"GVL_ATS.requests.loadTray.errorAck",True,pyads.PLCTYPE_BOOL)
 
         
     def block_execute_callback(self,goalHandler):

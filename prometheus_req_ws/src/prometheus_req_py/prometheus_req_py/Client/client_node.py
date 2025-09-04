@@ -46,19 +46,14 @@ class Client_Node(Node):
 
         if(not self.errorChecked):
             choosenSequence=SequenceDialog(self.root,title="Starting Sequence",options=ADS_CONSTANTS.BUILDING_BLOCKS).result
+            if(choosenSequence is None):
+                choosenSequence=[]
             self.sequence = iter(choosenSequence)
         else:
             self.get_logger().info("[Client_node] Sequence interrupted because error check, resuming sequence")
             self.updateResponseText("Sequence interrupted because error check, resuming sequence.", isResult=False)
 
-        #problematic TODO:check
-        '''
-        if(len(self.sequence)<1):
-            self.get_logger().info("[Client_node] Empty sequence!")
-            self.updateResponseText("Sequence empty", isResult=False)
-            self.inSequence=False
-            return
-        '''
+
         
 
         self.errorChecked=False
@@ -81,7 +76,7 @@ class Client_Node(Node):
             return
         #TODO: aggiungere semaforo
         while(not self.goNext):
-            pass
+            self.root.update()
         if(self.errorChecked):
             self.inSequence=False
             self.functionBlockCalled=False
@@ -91,7 +86,7 @@ class Client_Node(Node):
             block = next(self.sequence)
             self.get_logger().info(f"[Client_node] Calling Block {block} in the sequence")
             self.call_block(block, override=True)
-            self.root.after(0, self.call_next_block)
+            self.call_next_block()
         except StopIteration:
             self.inSequence=False
             self.functionBlockCalled = False
