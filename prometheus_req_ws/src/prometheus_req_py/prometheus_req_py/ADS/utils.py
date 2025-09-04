@@ -25,7 +25,8 @@ class msgType(IntEnum):
     '''
     NORMAL = 0
     ERROR_CHECK = 1
-    ASKING_PICTURE = 2
+    ASK_PICTURE_SCREW = 2
+    ASK_PICTURE_VCHECK = 3
 
 
 

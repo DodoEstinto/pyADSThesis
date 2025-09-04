@@ -134,6 +134,7 @@ class ADS_Node(Node):
         self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
 
         self.first_update()
+        self.plc.write_by_name(f"GVL_ATS.requests.loadTray.errorAck",True,pyads.PLCTYPE_BOOL)
 
         
     def block_execute_callback(self,goalHandler):
@@ -242,25 +243,25 @@ class ADS_Node(Node):
             self.get_logger().info(f"[ADS_Node]: Managing function block {functionBlockName} with state {actualState} and result {result.success}")
             match (functionBlockName):
                 case "positionerRotate":
-                        result.msg,result.state=self.managePositionerRotate()
+                        result.msg,result.state=self.managePositionerRotate(goalHandler)
                 case "loadTray":
-                        result.msg,result.state=self.manageLoadTray()
+                        result.msg,result.state=self.manageLoadTray(goalHandler)
                 case "depositTray":
-                        result.msg,result.state=self.manageDepositTray()
+                        result.msg,result.state=self.manageDepositTray(goalHandler)
                 case "mrTrolleyVCheck":
-                        result.msg,result.state=self.manageMrTrolleyVCheck()
+                        result.msg,result.state=self.manageMrTrolleyVCheck(goalHandler)
                 case "screwPickup":
-                        result.msg,result.state=self.manageScrew()
+                        result.msg,result.state=self.manageScrew(goalHandler)
                 case "screwTight":
-                        result.msg,result.state=self.manageScrew()
+                        result.msg,result.state=self.manageScrew(goalHandler)
                 case "present2Op":
-                        result.msg,result.state=self.managePresent()
+                        result.msg,result.state=self.managePresent(goalHandler)
                 case "presentToScrew":
-                        result.msg,result.state=self.managePresent()
+                        result.msg,result.state=self.managePresent(goalHandler)
                 case "gyroGrpRot":
-                        result.msg,result.state=self.manageGyroGrpRotate()
+                        result.msg,result.state=self.manageGyroGrpRotate(goalHandler)
                 case "stackTray":
-                        result.msg,result.state=self.manageStackTray()
+                        result.msg,result.state=self.manageStackTray(goalHandler)
 
             goalHandler.succeed()
             result.success=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.Done",pyads.PLCTYPE_BOOL)
@@ -341,7 +342,7 @@ class ADS_Node(Node):
         self.errorCheckEvent=True
 
 
-    def error_check(self,errMsg:str) -> None:
+    def error_check(self,errMsg:str,goalHandler) -> None:
         '''
         Handle the error check action.
         :param errMsg: The error message to send to the client.
@@ -350,7 +351,7 @@ class ADS_Node(Node):
         msgFeed=CallFunctionBlock.Feedback()
         msgFeed.msg_type=msgType.ERROR_CHECK
         msgFeed.msg=errMsg
-        self.goalHandler.publish_feedback(msgFeed)
+        goalHandler.publish_feedback(msgFeed)
         self.get_logger().info("MANDATO!")
         #TODO: mettere semaforo
         while(not self.errorCheckEvent):
@@ -360,30 +361,26 @@ class ADS_Node(Node):
         self.errorCheckEvent=False
 
 
-    def askPicture(self,msg):
+    def askPicture(self,goalHandler,msg):
         '''
         Handle the ask picture action.
         '''
         msg_feed=CallFunctionBlock.Feedback()
-        msg_feed.msg_type=msgType.ASKING_PICTURE
-        msg_feed.msg=msg
-        if(self.goalHandler.request.function_block_name=="screwTight"):
-            msg_feed.focal_plane=self.goalHandler.request.int_param1
-            msg_feed.roi_id=self.goalHandler.request.int_param2
-            msg_feed.find_screw=True
-        elif self.goalHandler.request.function_block_name=="trolleyVCheck":
-            msg_feed.focal_plane=1
-            msg_feed.roi_id=1
-            msg_feed.find_screw=False
+        if(goalHandler.request.function_block_name=="screwPickup" or goalHandler.request.function_block_name=="screwTight"):
+            msg_feed.msg_type=msgType.ASK_PICTURE_SCREW
+        else:
+            msg_feed.msg_type=msgType.ASK_PICTURE_VCHECK
 
-        self.goalHandler.publish_feedback(msg_feed)
+        msg_feed.msg=msg
+        goalHandler.publish_feedback(msg_feed)
         self.get_logger().info("[Debug]Waiting for the picture...")
         while(not self.askPictureEvent):
             #rclpy.spin_once(self)
             pass
         self.askPictureEvent=False
-        return self.offset
-    
+        #we don't need data_valid for now
+        return self.offset[1:]
+
 
     def askPicture_callback(self, offset: Offset):
         """
@@ -392,7 +389,7 @@ class ADS_Node(Node):
         """
 
         self.get_logger().info("[ADS]ASK PICTURE CALLBACK!")
-        self.offset=(offset.x, offset.y, offset.theta) # Dummy value, as the actual picture handling is not implemented here.
+        self.offset=(offset.data_valid,offset.x, offset.y, offset.theta)
 
         self.askPictureEvent=True
         

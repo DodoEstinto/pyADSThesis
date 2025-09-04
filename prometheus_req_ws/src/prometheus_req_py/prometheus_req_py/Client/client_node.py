@@ -264,24 +264,35 @@ class Client_Node(Node):
                 if(self.inSequence):
                     self.get_logger().info("[Client_node] Error check in sequence, aborting sequence!")
                     self.errorChecked=True
-            case msgType.ASKING_PICTURE:
+            case msgType.ASK_PICTURE_SCREW:
                 self.updateResponseText("Asking a photo...", isResult=False)
                 _=OkDialog(self.root, title="Take Picture", message="Press ok to take a picture!")
-                focalPlane=feedbackMsg.feedback.short_param1
-                roiID=feedbackMsg.feedback.short_param2
-                findScrew=feedbackMsg.feedback.bool_param1
+                focalPlane= simpledialog.askinteger("Select Focal Plane", "Enter the focal plane (0-2):", minvalue=0, maxvalue=2)
+                if(focalPlane is None):
+                    focalPlane=0
+                roiID= simpledialog.askinteger("Select ROI ID", "Enter the ROI ID (0-3):", minvalue=0, maxvalue=3)
+                if(roiID is None):
+                    roiID=0
+                findScrew= messagebox.askyesno("Find Screw", "Find the screw in the image? Yes/No")
                 self.get_logger().info(f"[Client_node] Received picture request with focalPlane:{focalPlane}, roiID:{roiID}, findScrew:{findScrew}")
-                offset=self.calculate_picture_offset(focalPlane,roiID,findScrew)
-                offsetMsg=Offset()
-                offsetMsg.x=offset[0]
-                offsetMsg.y=offset[1]
-                offsetMsg.theta=offset[2]
-                self.offsetPub.publish(offsetMsg)
-                self.get_logger().info(f"[Client_node] Published offset: {offsetMsg}")
+                self.sendOffsetData(feedbackMsgType,focalPlane,roiID,findScrew)
+            case msgType.ASK_PICTURE_VCHECK:
+                self.updateResponseText("Asking a photo...", isResult=False)
+                _=OkDialog(self.root, title="Take Picture", message="Press ok to take a picture!")
+                self.sendOffsetData(feedbackMsgType)
             case _:
                 self.updateLabels() #TODO: needed?
                 self.updateResponseText(self.functionBlockMsg, isResult=False)
-        
+
+    def sendOffsetData(self,msgType,focalPlane:int=0, roiID:int=0, findScrew:bool=False) -> None:
+        offset=self.calculate_picture_offset(msgType,focalPlane,roiID,findScrew)
+        offsetMsg=Offset()
+        offsetMsg.data_valid=offset[0]
+        offsetMsg.x=offset[1]
+        offsetMsg.y=offset[2]
+        offsetMsg.theta=offset[3]
+        self.offsetPub.publish(offsetMsg)
+        self.get_logger().info(f"[Client_node] Published offset: {offsetMsg}")
     def __init__(self,root):
         super().__init__('client_node')
         self.init_GUI = partial(client_GUI.init_GUI,self)
@@ -356,7 +367,7 @@ class Client_Node(Node):
         self.updateLabels()
 
 
-    def calculate_picture_offset(self,calibrationPlane,roiId,findScrew) -> tuple[float,float,float]:
+    def calculate_picture_offset(self,askedAction,calibrationPlane=0,roiId=0,findScrew=False) -> tuple[float,float,float]:
             """
             Dummy function, as the actual implementation depends on the specific requirements of the application.
             Calculate the offset of the picture.
@@ -365,41 +376,40 @@ class Client_Node(Node):
             ATS_IP = '10.10.10.100'
             self.get_logger().info(f"[Client_node]Requesting picture offset from ATS at {ATS_IP}")
             parameters={"calibrationPlane":calibrationPlane,"roiId":roiId,"findScrew":findScrew}
+            if(askedAction==msgType.ASK_PICTURE_SCREW):
+                Command="GetScrewCorrection"
+            else:
+                Command="GetTrayCorrection"
+
+
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
             try:
-                response = requests.get(f'https://{ATS_IP}/GetScrewCorrection',params=parameters,verify=False).json()
+                response = requests.get(f'https://{ATS_IP}/{Command}',params=parameters,verify=False).json()
             except Exception as e:
                 self.get_logger().error(f"Error occurred: {e}")
-                #TODO: TEST!
-                # this should trigger the PLC safety measures.
-                return 99999.9,99999.9,99999.9
+                return False,0.0,0.0,0.0
             self.get_logger().info(f"[Client_node]DATA IS: {response}")
+
             if(type(response) is str):
                 response=ast.literal_eval(response.replace('false',"False").replace('true','True'))
-            self.get_logger().info(f"[Client_node]DATA IS: {response}")
 
             dataValid=response["DataValid"]
             if(dataValid is False):
                 self.get_logger().error("[Client_node]Error in picture processing!")
-                return 9999.9,99999.9,99999.9
-            circleFound=response["CircleFound"]
-            if(circleFound is False):
-                self.get_logger().error("[Client_node]Error in picture processing: Circle not found!")
-                return 99999.9,99999.9,99999.9
+                return False,0.0,0.0,0.0
+            #Not used for now
+            #circleFound=response["CircleFound"]
+            #if(circleFound is False):
+            #    self.get_logger().error("[Client_node]Error in picture processing: Circle not found!")
+            #    return False,0.0,0.0,0.0
             translationX=response["TranslationX"]
             translationY=response["TranslationY"]
             rotation=response["Rotation"]
 
             self.get_logger().info(f"[Client_node]Picture offset response: {response}")
-            #if not dataValid or not circleFound:
-            #    self.get_logger().error("[Client_node]Error in picture processing!")
-            #    #this should trigger the PLC safety measures.
-            #    #TODO:TEST!
-            #    return 99999,99999,99999
-            
-            #return translationX,translationY,rotation
 
-            return translationX, translationY, rotation
+
+            return dataValid,translationX, translationY, rotation
 
 def main(args=None):
     rclpy.init(args=args)
