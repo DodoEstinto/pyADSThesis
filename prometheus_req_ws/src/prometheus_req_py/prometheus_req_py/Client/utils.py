@@ -33,9 +33,6 @@ class ScrewDialog(simpledialog.Dialog):
         tk.Label(master, text="Focal Plane:").grid(row=5, column=0, sticky="w")
         tk.Label(master, text="Screw Recipe ID:").grid(row=6, column=0, sticky="w")
 
-        self.entry_target = tk.Entry(master)
-        self.entry_target.grid(row=4, column=1)
-
         self.entry_x = tk.Entry(master)
         self.entry_y = tk.Entry(master)
         self.entry_z = tk.Entry(master)

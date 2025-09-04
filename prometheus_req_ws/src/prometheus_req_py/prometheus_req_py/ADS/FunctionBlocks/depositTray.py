@@ -21,4 +21,4 @@ def manageDepositTray(self,goalHandler) -> tuple[str,int]:
         msg="Error check solved"
     else:
         msg=getReqStateMsg(funcState)
-        return msg,funcState
+    return msg,funcState

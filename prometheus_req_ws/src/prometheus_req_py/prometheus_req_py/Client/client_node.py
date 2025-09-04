@@ -81,7 +81,7 @@ class Client_Node(Node):
             return
         #TODO: aggiungere semaforo
         while(not self.goNext):
-            self.root.update()  # keep processing Tk events
+            pass
         if(self.errorChecked):
             self.inSequence=False
             self.functionBlockCalled=False
@@ -91,7 +91,7 @@ class Client_Node(Node):
             block = next(self.sequence)
             self.get_logger().info(f"[Client_node] Calling Block {block} in the sequence")
             self.call_block(block, override=True)
-            self.call_next_block()
+            self.root.after(0, self.call_next_block)
         except StopIteration:
             self.inSequence=False
             self.functionBlockCalled = False

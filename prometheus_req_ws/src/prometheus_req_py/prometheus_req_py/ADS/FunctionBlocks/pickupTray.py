@@ -5,6 +5,7 @@ import pyads
 def managePickupTray(self,goalHandler) -> tuple[str,int]:
     '''
     Manage the individual behaviour of the pickup tray function block.
+    :goalHandler: The goal handler for the request.
     :return: A tuple containing the message and the state of the function block.
     '''
 
@@ -21,4 +22,4 @@ def managePickupTray(self,goalHandler) -> tuple[str,int]:
         msg="Error check solved"
     else:
         msg=getReqStateMsg(funcState)
-        return msg,funcState
+    return msg,funcState

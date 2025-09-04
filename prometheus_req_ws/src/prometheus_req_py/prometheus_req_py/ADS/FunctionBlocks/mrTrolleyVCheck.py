@@ -7,6 +7,7 @@ from prometheus_req_interfaces.action import CallFunctionBlock
 def manageMrTrolleyVCheck(self,goalHandler):
     '''
     Manage the individual behaviour of the MR Trolley V Check function block.
+    :goalHandler: The goal handler for the request.
     :return: A tuple containing the message and the state of the function block.
     '''
     funcState=self.plc.read_by_name("GVL_ATS.requests.mrTrolleyVCheck.State",pyads.PLCTYPE_INT)
@@ -14,7 +15,6 @@ def manageMrTrolleyVCheck(self,goalHandler):
     match funcState:
         case reqState.ST_ERROR_CHECK:
             msg,funcState=self.manageMrTrolleyVCheckErrorCheck()
-        #TODO: controllare se serve veramente lo state ready
         case reqState.ST_REQ_PENDING | reqState.ST_READY:
             self.get_logger().info("[Debug]Waiting for the picture request...")
             # Wait for the picture request to be sent.

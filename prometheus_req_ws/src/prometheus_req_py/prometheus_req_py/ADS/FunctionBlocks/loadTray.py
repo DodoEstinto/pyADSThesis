@@ -4,6 +4,7 @@ import pyads
 def manageLoadTray(self,goalHandler) -> tuple[str,int]:
     '''
     Manage the individual behaviour of the load tray function block.
+    :goalHandler: The goal handler for the request.
     :return: A tuple containing the message and the state of the function block.
     '''
     funcState=self.plc.read_by_name("GVL_ATS.requests.loadTray.State",pyads.PLCTYPE_INT)
