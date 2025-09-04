@@ -67,12 +67,14 @@ class Client_Node(Node):
             self.inSequence=False
 
     def call_next_block(self):
+        '''
+        Call the next block in the sequence.
+        '''
         if self.sequenceAborted:
             self.get_logger().info("[Client_node] Sequence aborted, stopping...")
             self.sequenceAborted = False
             self.functionBlockCalled = False
             return
-        #TODO: aggiungere semaforo
         while(not self.goNext):
             self.root.update()
         if(self.errorChecked):
@@ -168,7 +170,7 @@ class Client_Node(Node):
                     if(response.result is None):
                         pass
                     else:
-                        ros_screw_bays = []
+                        screwBay = []
                         for slot_dict in response.result:
                             if slot_dict is None:
                                 continue  # skip invalid entries
@@ -177,12 +179,10 @@ class Client_Node(Node):
                             slot_msg.max_idx_y = slot_dict["MAX_IDX_Y"]
                             slot_msg.next_idx_x  = slot_dict["nextIdxX"]
                             slot_msg.next_idx_y  = slot_dict["nextIdxY"]
-                            ros_screw_bays.append(slot_msg)
-
-                        self.screwBayReq.screw_bays = ros_screw_bays
-
+                            screwBay.append(slot_msg)
+                        self.screwBayReq.screw_bays = screwBay
                         self.get_logger().info(f"[Client_node] Calling setScrewBayState for {self.screwBayReq.bay_number} bays with state: {self.screwBayReq.screw_bays}")
-                        future=self.screwBayStateClient.call_async(self.screwBayReq)
+                        self.screwBayStateClient.call_async(self.screwBayReq)
                     self.functionBlockCalled=False
                     return                        
             if(cancelAction):
@@ -278,6 +278,13 @@ class Client_Node(Node):
                 self.updateResponseText(self.functionBlockMsg, isResult=False)
 
     def sendOffsetData(self,msgType,focalPlane:int=0, roiID:int=0, findScrew:bool=False) -> None:
+        '''
+        Call the function to calculate the picture offset and publish it.
+        :param msgType: The type of message to send.
+        :param focalPlane: The focal plane to use for the picture.
+        :param roiID: The ROI ID to use for the picture.
+        :param findScrew: Whether to find the screw in the picture.
+        '''
         offset=self.calculate_picture_offset(msgType,focalPlane,roiID,findScrew)
         offsetMsg=Offset()
         offsetMsg.data_valid=offset[0]
@@ -286,7 +293,12 @@ class Client_Node(Node):
         offsetMsg.theta=offset[3]
         self.offsetPub.publish(offsetMsg)
         self.get_logger().info(f"[Client_node] Published offset: {offsetMsg}")
+
     def __init__(self,root):
+        '''
+        Initialize the client node.
+        :param root: The root window of the Tkinter GUI.
+        '''
         super().__init__('client_node')
         self.init_GUI = partial(client_GUI.init_GUI,self)
         self.initLabels = partial(client_GUI.initLabels,self)
@@ -362,9 +374,12 @@ class Client_Node(Node):
 
     def calculate_picture_offset(self,askedAction,calibrationPlane=0,roiId=0,findScrew=False) -> tuple[bool,float,float,float]:
             """
-            Dummy function, as the actual implementation depends on the specific requirements of the application.
             Calculate the offset of the picture.
-            :return: The offset of the picture.
+            :param askedAction: The type of action to perform (ASK_PICTURE_SCREW or ASK_PICTURE_VCHECK).
+            :param calibrationPlane: The calibration plane to use (only for ASK_PICTURE_SCREW).
+            :param roiId: The ROI ID to use (only for ASK_PICTURE_SCREW).
+            :param findScrew: Whether to find the screw in the picture (only for ASK_PICTURE_SCREW).
+            :return: A tuple containing a boolean indicating if the data is valid, and the x, y, theta offsets.
             """
             ATS_IP = '10.10.10.100'
             self.get_logger().info(f"[Client_node]Requesting picture offset from ATS at {ATS_IP}")
