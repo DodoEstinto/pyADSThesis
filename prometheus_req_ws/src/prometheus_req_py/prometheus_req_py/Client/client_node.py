@@ -29,7 +29,6 @@ from functools import partial
 from prometheus_req_py.Client.GUI import client_GUI
 from prometheus_req_interfaces.srv import SetScrewBayState
 import requests
-import threading
 import urllib3
 import ast
 
@@ -42,6 +41,9 @@ class Client_Node(Node):
   
 
     def start_sequence(self):  
+        '''
+        Initiate a sequence of building block calls.
+        '''
         self.inSequence=True
 
         if(not self.errorChecked):
@@ -53,16 +55,12 @@ class Client_Node(Node):
             self.get_logger().info("[Client_node] Sequence interrupted because error check, resuming sequence")
             self.updateResponseText("Sequence interrupted because error check, resuming sequence.", isResult=False)
 
-
-        
-
         self.errorChecked=False
         self.sequenceAborted = False
         self.goNext=True
         if(not self.functionBlockCalled):
-            #thr = threading.Thread(target=self.call_next_block, args=(), kwargs={})
-            #thr.start()
-            self.root.after(0,self.call_next_block)
+
+            self.call_next_block()
         else:
             self.get_logger().info("[Client_node] Cannot start sequence, another function block is running.")
             self.updateResponseText("Cannot start sequence, another function block is running.", isResult=False)
