@@ -28,6 +28,16 @@ class msgType(IntEnum):
     ASK_PICTURE_SCREW = 2
     ASK_PICTURE_VCHECK = 3
 
+class inputType(IntEnum):
+    '''
+    Enum representing the type of input requested from the user.
+    '''
+    YES_NO = 0
+    INTEGER = 1
+    FLOAT= 2
+    ERROR_CHECK = 3
+    OK = 4
+    CALLBLOCK = 5
 
 
 class roiIds(IntEnum):

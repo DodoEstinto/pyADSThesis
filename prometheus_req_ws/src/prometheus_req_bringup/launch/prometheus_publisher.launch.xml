@@ -1,5 +1,5 @@
 <launch>
-    <node pkg="prometheus_req_py" exec="client_node" name="client_node">
+    <node pkg="prometheus_req_py" exec="client_API" name="client_API">
     </node>
     <node pkg="prometheus_req_py" exec="ads_node" name="ads_node">
         <param from="$(find-pkg-share prometheus_req_bringup)/config/ads_node_config.yaml" />
