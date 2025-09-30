@@ -20,7 +20,7 @@ from prometheus_req_interfaces.msg import EquipmentStatus, Offset,ScrewSlot,Inpu
 from prometheus_req_interfaces.action import CallFunctionBlock
 from prometheus_req_py.ADS.utils import msgType,inputType
 from std_msgs.msg import Empty
-from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy, QoSHistoryPolicy
 from prometheus_req_interfaces.srv import SetScrewBayState
 from rclpy.executors import MultiThreadedExecutor
 import requests
@@ -62,9 +62,15 @@ class API_node(Node):
             'offset',
             qos_profile=qos
         )
-
-        self.askInputPub = self.create_publisher(InputOutput,'askinput',10)
-        self.receiveInputSub= self.create_subscription(InputOutput,'receiveinput',self.receive_input_callback,10)
+        inputQos=QoSProfile(
+            depth=5,
+            reliability=QoSReliabilityPolicy.RELIABLE,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+            history=QoSHistoryPolicy.KEEP_LAST
+             )
+        
+        self.askInputPub = self.create_publisher(InputOutput,'askinput',qos_profile=inputQos)
+        self.receiveInputSub= self.create_subscription(InputOutput,'receiveinput',self.receive_input_callback,qos_profile=inputQos)
         self.inputReceived=False
         self.input=InputOutput()
         self.functionBlockCalled=False
@@ -503,7 +509,9 @@ class API_node(Node):
         #Refer to msgType documentation for more informations about it
         match feedbackMsgType:
             case msgType.ERROR_CHECK:
-                self.get_logger().info(f"[client_API] Error check required: {self.functionBlockMsg}")
+                message=f"[client_API] Error check required: {self.functionBlockMsg}"
+                self.get_logger().info(message)
+
                 inputMsg=InputOutput()
                 inputMsg.type=inputType.ERROR_CHECK
                 inputMsg.message=self.functionBlockMsg
