@@ -18,15 +18,17 @@ from rclpy.action import ActionClient
 from copy import deepcopy
 from prometheus_req_interfaces.msg import EquipmentStatus, Offset,ScrewSlot,InputOutput
 from prometheus_req_interfaces.action import CallFunctionBlock
-from prometheus_req_py.ADS.utils import msgType,inputType
+from prometheus_req_py.ADS.utils import msgType,inputType,publishFeedback
 from std_msgs.msg import Empty
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy, QoSHistoryPolicy
-from prometheus_req_interfaces.srv import SetScrewBayState
+from prometheus_req_interfaces.srv import SetScrewBayState, RequestState
 from rclpy.executors import MultiThreadedExecutor
 import requests
 import urllib3
 import ast
 import threading
+import time
+
 
 class API_node(Node):
 
@@ -51,6 +53,12 @@ class API_node(Node):
             depth=3,
             reliability=QoSReliabilityPolicy.RELIABLE
         )
+
+        self.stateRequestService= self.create_service(
+            RequestState,
+            'request_state',
+            self.state_request_callback)
+
         self.errorCheckPub= self.create_publisher(
             Empty,
             'errorCheckAck',
@@ -151,7 +159,6 @@ class API_node(Node):
             self.updateResponseText("Sequence completed!", isResult=False)
     """
 
-
     def call_block(self, name:str,override=False) -> None:
         '''
         This function is called when the building block buttons are pressed.
@@ -185,6 +192,8 @@ class API_node(Node):
                             self.ActionReq.bool_param1=False
                         case _:
                             cancelAction=True
+
+                    
                 case "positionerRotate":
                     self.get_logger().info("Asking for positioner rotation direction...")
                     inputMsg.type=inputType.YES_NO
@@ -516,7 +525,11 @@ class API_node(Node):
                 inputMsg.type=inputType.ERROR_CHECK
                 inputMsg.message=self.functionBlockMsg
                 self.askInputPub.publish(inputMsg)
+                self.lastTime=time.time()
                 while not self.inputReceived and self.input.type!=inputType.ERROR_CHECK:
+                    if(time.time()-self.lastTime>1):
+                        self.lastTime=time.time()
+                        self.get_logger().info(f"Waiting for error check input...{self.inputReceived} {self.input.type} {inputType.ERROR_CHECK}")
                     pass
                 self.inputReceived=False
 
@@ -603,6 +616,7 @@ class API_node(Node):
 
         self.input=deepcopy(msg)
         self.inputReceived=True
+        self.get_logger().info(f"[client_API] Received input: {self.input.message} of type {self.input.type}")
 
 
 
@@ -636,7 +650,13 @@ class API_node(Node):
             self.get_logger().error("[client_API]Received None msg!")
             return
         self.state=deepcopy(msg)
-        
+
+    def state_request_callback(self, request: RequestState, response: RequestState.Response) -> RequestState.Response:
+        '''
+        Handle a state request.
+        '''
+        response.state=deepcopy(self.state)
+        return response
 
     def calculate_picture_offset(self,askedAction,calibrationPlane=0,roiId=0,findScrew=False) -> tuple[bool,float,float,float]:
             """
@@ -684,6 +704,7 @@ class API_node(Node):
 
 
             return dataValid,translationX, translationY, rotation
+
 
 def main(args=None):
     rclpy.init(args=args)

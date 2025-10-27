@@ -2,6 +2,7 @@ import sys
 import subprocess
 from prometheus_req_py.ADS.utils import inputType
 import prometheus_req_py.ADS.constants as constants
+import re
 
 def print_menu():
     '''
@@ -11,7 +12,7 @@ def print_menu():
     print("=== ROS2 CLI Menu ===","\n",
           "1. Send Command","\n",
           "2. Show last request","\n",
-          "3. Get Status (not implemented)","\n",
+          "3. Get Status","\n",
           "0. Exit","\n")
 
 
@@ -66,6 +67,7 @@ def send_command():
     '''
 
     key, value = select_input_type()
+    print(f"Selected input type: {key} ({value})")
     if key is None:
         return
     if value == inputType.CALLBLOCK:
@@ -115,6 +117,29 @@ def receive_last_feedback():
         else:
             print("Error executing ROS2 command:", e)
 
+def get_status():
+
+    ros2_cmd = [
+        "timeout","5s","ros2", "service", "call",
+        "request_state",
+        "prometheus_req_interfaces/srv/RequestState"
+    ]
+    print("Executing:", " ".join(ros2_cmd))
+    try:
+        result= subprocess.run(ros2_cmd, check=True,capture_output=True,
+            text=True)
+        
+        output = result.stdout
+        #output= re.sub()
+        #output = output.split(",")
+        print(output)
+
+    except subprocess.CalledProcessError as e:
+        if e.returncode == 124:
+            print("No message received within timeout.")
+        else:
+            print("Error executing ROS2 command:", e)
+
 def main():
     '''
     Main function to run the CLI menu loop.
@@ -127,7 +152,7 @@ def main():
         elif choice == "2":
             receive_last_feedback()
         elif choice == "3":
-            print("Get Status not implemented.")
+            get_status()
         elif choice == "0":
             print("Exiting.")
             sys.exit(0)
