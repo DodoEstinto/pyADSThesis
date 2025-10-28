@@ -368,10 +368,10 @@ class API_node(Node):
                         while not self.inputReceived:
                             pass
                         self.inputReceived=False
-                        match self.input.message:
-                            case "Yes":
+                        match self.input.message.lower():
+                            case "yes":
                                 screwArea=True
-                            case "No":
+                            case "no":
                                 screwArea=False
                             case _:
                                 cancelAction=True
@@ -596,8 +596,7 @@ class API_node(Node):
         It updates the local state variable and the labels of the GUI.
         :param msg: The new state of the equipment.
         '''
-        #Testing code
-        #self.get_logger().info("[client_API]Receiving:"+str(msg.active_state_fsm_string))
+
         if(msg is None):
             self.get_logger().error("[client_API]Received None msg!")
             return
