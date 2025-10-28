@@ -274,7 +274,7 @@ class Client_Node(Node):
                 _=OkDialog(self.root, title="Take Picture", message="Press ok to take a picture!")
                 self.sendOffsetData(feedbackMsgType)
             case _:
-                self.updateLabels() #TODO: needed?
+                self.updateLabels()
                 self.updateResponseText(self.functionBlockMsg, isResult=False)
 
     def sendOffsetData(self,msgType,focalPlane:int=0, roiID:int=0, findScrew:bool=False) -> None:

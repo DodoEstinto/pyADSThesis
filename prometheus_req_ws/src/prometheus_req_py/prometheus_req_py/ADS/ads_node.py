@@ -148,7 +148,7 @@ class ADS_Node(Node):
 
         functionBlockName=goalHandler.request.function_block_name
 
-        #TODO: update as needed
+        '''
         allowedFunctionBlocks=["positionerRotate","loadTray","mrTrolleyVCheck","screwPickup",
                                "screwTight","depositTray","pickUpTray","present2Op","presentToScrew",
                                "gyroGrpRot","stackTray"]
@@ -160,40 +160,33 @@ class ADS_Node(Node):
             result.msg=f"Function Block {goalHandler.request.function_block_name} not allowed! Allowed function blocks are: {allowedFunctionBlocks}"
             result.state=999
             return result
-
+        '''
         
 
         result=CallFunctionBlock.Result()
 
-
-        self.get_logger().info(f"[DEBUG]GVL_ATS.requests.{functionBlockName}.request")
-        
         actualState=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT)
-        debugState=getReqStateMsg(actualState)
-        self.get_logger().info(f"[ADS_NODE]State: {actualState}@@@{debugState}")
+        msgState=getReqStateMsg(actualState)
+        self.get_logger().info(f"[ADS_Node]State: {actualState}:{msgState}")
         self.publishFeedback(goalHandler, getReqStateMsg(actualState),0)
         if(actualState == reqState.ST_READY):
-            self.get_logger().info(f"[DEBUG]Ready")
             check,msg=self.runChecks(functionBlockName)
-            self.get_logger().info(f"[DEBUG]Checks for {functionBlockName} returned {check} with message: {msg}")
             #if the preconditions are not met, the goal is aborted.
             if(not check):
-                self.get_logger().info(f"[DEBUG]Checks failed for {functionBlockName}, aborting goal.")
                 msgFeed=CallFunctionBlock.Feedback()
                 msgFeed.msg_type=msgType.ERROR_CHECK
                 msgFeed.msg=msg
                 goalHandler.publish_feedback(msgFeed)
-                self.get_logger().info(f"[DEBUG]About to abort")
                 goalHandler.abort()
                 result.success=False
                 result.msg=msg
                 result.state=actualState
-                self.get_logger().info(f"[DEBUG] Goal aborted due to checks failure. -> {msg}")
+                self.get_logger().info(f"[ADS_Node] Goal aborted due to checks failure. -> {msg}")
                 return result
             
             #If the checks are passed, we manage the parameters of the function block.
             self.manageParameters(goalHandler.request,functionBlockName)
-            self.get_logger().info(f"[DEBUG]Parameters managed for {functionBlockName}")
+            self.get_logger().info(f"[ADS_Node] Parameters managed for {functionBlockName}")
             #Send the request to the PLC
             self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.request",1,pyads.PLCTYPE_BOOL)
             counter=0
@@ -204,12 +197,12 @@ class ADS_Node(Node):
                     feedback_msg = CallFunctionBlock.Feedback()
                     feedback_msg.msg="Waiting for the function block state to start..."
                     goalHandler.publish_feedback(feedback_msg)
-                    self.get_logger().info(f"[DEBUG] Waiting for the function block state to start... ({counter} try of 3)")
+                    self.get_logger().info(f"[ADS_Node] Waiting for the function block state to start... ({counter} try of 3)")
                     if counter==3:
                         break
                 pass
             if counter==3:
-                self.get_logger().info(f"[DEBUG] Function Block {functionBlockName} did not start, aborting goal.")
+                self.get_logger().info(f"[ADS_Node] Function Block {functionBlockName} did not start, aborting goal.")
                 goalHandler.abort()
                 result.success=False
                 result.msg=f"Function Block {functionBlockName} did not start, aborting goal."
@@ -225,7 +218,6 @@ class ADS_Node(Node):
             #self.get_logger().info(f"[DEBUG]Function Block {functionBlockName} executed, waiting for the result...")
             
 
-            self.get_logger().info(f"[DEBUG]Function Block {functionBlockName} executed.")
             actualState=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT)
             self.publishFeedback(goalHandler, f"Handling the function Block {functionBlockName}",0)
             self.get_logger().info(f"[ADS_Node]: Managing function block {functionBlockName} with state {actualState} and result {result.success}")
@@ -275,12 +267,6 @@ class ADS_Node(Node):
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.rotateClockwise",req.bool_param1,pyads.PLCTYPE_BOOL)
             case "loadTray":
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.reqToLoad",req.bool_param1,pyads.PLCTYPE_BOOL)
-            case "mrTrolleyVCheck":
-                #TODO: testare e riabilitare
-                #self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.xVisCorrTray",req.float_param1,pyads.PLCTYPE_REAL)
-                #self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.yVisCorrTray",req.float_param2,pyads.PLCTYPE_REAL)
-                #self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.thetaVisCorrTray",req.float_param3,pyads.PLCTYPE_REAL)
-                pass
             case "screwPickup":
                 #screwType
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.screwType",req.int_param1,pyads.PLCTYPE_INT)
@@ -292,7 +278,6 @@ class ADS_Node(Node):
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.target2Use",req.int_param1,pyads.PLCTYPE_INT)
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.focalPlane2Use",req.int_param2,pyads.PLCTYPE_INT)
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.screwRecipeID",req.int_param3,pyads.PLCTYPE_BYTE)
-                #self.get_logger().info(f"[DEBUG]Parameters for {functionBlockName} set: x:{req.float_param1}, y:{req.float_param2}, theta:{req.float_param3}, screwArea:{2 if req.bool_param1 else 1}, target2Use:{req.int_param1}, focalPlane2Use:{req.int_param2}, screwRecipeID:{req.int_param3}")
             case "present2Op" | "presentToScrew":
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.sideToScrew",req.int_param1,pyads.PLCTYPE_INT)
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.faceToScrew",req.int_param2,pyads.PLCTYPE_INT)
@@ -300,6 +285,8 @@ class ADS_Node(Node):
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.sideToRotate",req.int_param1,pyads.PLCTYPE_INT)
             case "stackTray":
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.stackLevel",req.int_param1,pyads.PLCTYPE_INT)
+            case _:
+                  pass
             
 
 
@@ -402,12 +389,6 @@ class ADS_Node(Node):
             return response
         screwBays_ctype=[]
         for i in range(bayNumber):
-            #self.plc.write_by_name(f"GVL_ATS.screwBay[{i}].maxIdxX",screwBays[i].max_idx_x,pyads.PLCTYPE_INT)
-            #self.plc.write_by_name(f"GVL_ATS.screwBay[{i}].maxIdxY",screwBays[i].max_idx_y,pyads.PLCTYPE_INT)
-            #self.plc.write_by_name(f"GVL_ATS.screwBay[{i}].nextIdxX",screwBays[i].next_idx_x,pyads.PLCTYPE_INT)
-            #self.plc.write_by_name(f"GVL_ATS.screwBay[{i}].nextIdxY",screwBays[i].next_idx_y,pyads.PLCTYPE_INT)
-            #self.get_logger().info(f"[ADS_Node] Set screw bay {i} with maxIdxX={screwBays[i].max_idx_x}, maxIdxY={screwBays[i].max_idx_y}, nextIdxX={screwBays[i].next_idx_x}, nextIdxY={screwBays[i].next_idx_y}.")
-
             slot_ctype = ScrewSlot_ctype()
             slot_ctype.MAX_IDX_X = screwBays[i].max_idx_x
             slot_ctype.MAX_IDX_Y = screwBays[i].max_idx_y
@@ -483,7 +464,6 @@ class ADS_Node(Node):
     def timer_callback(self):
         '''
         This function is called periodically. It publishes a status update on the state topic.
-        TODO: else is needed?
         '''
         if(self.lastStatus is None):
             status=self.plc.read_by_name('GVL_ATS.equipmentState',EquipmentStatus_ctype)
