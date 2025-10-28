@@ -49,6 +49,7 @@ class inputType(IntEnum):
     INTEGER = 3
     FLOAT= 4
     OK = 5
+    SCREW_SLOT = 6
     
 
 

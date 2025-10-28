@@ -132,16 +132,10 @@ def get_status():
             text=True)
         
         output = result.stdout.strip()
-        #output= re.sub()
-        #output = output.split(",")
-        # Inserisce a capo dopo le virgole seguite da spazio
-        
         #remove all useless lines
         formatted_msg = re.sub(r',\s*', ',\n    ', output)
-
         #adds \n after params opening parenthesis
         formatted_msg = re.sub(r'\(', '(\n    ', formatted_msg)
-
         #adds \n before closing parenthesis
         formatted_msg = re.sub(r'\)', '\n)', formatted_msg)
         # Remove extra blank lines

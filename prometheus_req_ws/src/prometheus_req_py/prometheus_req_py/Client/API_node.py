@@ -81,11 +81,11 @@ class API_node(Node):
             reliability=QoSReliabilityPolicy.RELIABLE,
             durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
             history=QoSHistoryPolicy.KEEP_LAST
-             )
+            )
         
         self.askInputPub = self.create_publisher(InputOutput,'askinput',qos_profile=inputQos)
         self.receiveInputSub= self.create_subscription(InputOutput,'receiveinput',self.receive_input_callback,qos_profile=inputQos,callback_group=self.input_group)
-        self.inputReceived=False
+        self.inputSem=threading.Semaphore(0)
         self.input=InputOutput()
         self.functionBlockCalled=False
         self.functionBlockDone=False
@@ -133,9 +133,7 @@ class API_node(Node):
                     msg="Load Tray: Do you want to load(yes) or unload(no) a new tray? Yes/No/Cancel"
                     inputMsg.message=msg
                     self.askInputPub.publish(inputMsg)
-                    while not self.inputReceived:
-                        pass
-                    self.inputReceived=False
+                    self.inputSem.acquire()
                     self.get_logger().info(f"[client_API] Received input: {self.input.message} of type {self.input.type}")
                     match self.input.message.lower():
                         case "yes":
@@ -152,9 +150,7 @@ class API_node(Node):
                     msg="Positioner Rotate: Rotate clockwise(Yes) or anticlockwise(No)? Yes/No/Cancel"
                     inputMsg.message=msg
                     self.askInputPub.publish(inputMsg)
-                    while not self.inputReceived:
-                        pass
-                    self.inputReceived=False
+                    self.inputSem.acquire()
                     match self.input.message.lower():
                         case "yes":
                             self.ActionReq.bool_param1=True
@@ -168,9 +164,7 @@ class API_node(Node):
                     msg="Stack Tray: Enter the tray number to stack (1-4) or Cancel"
                     inputMsg.message=msg
                     self.askInputPub.publish(inputMsg)
-                    while not self.inputReceived:
-                        pass
-                    self.inputReceived=False
+                    self.inputSem.acquire()
                     try:
                         trayNumber=int(self.input.message)
                         if(trayNumber<1 or trayNumber>4):
@@ -189,9 +183,7 @@ class API_node(Node):
                     msg="Gyro Gripper Rotate: Enter the direction to rotate (1-2) or Cancel"
                     inputMsg.message=msg
                     self.askInputPub.publish(inputMsg)
-                    while not self.inputReceived:
-                        pass
-                    self.inputReceived=False
+                    self.inputSem.acquire()
                     try:
                         direction=int(self.input.message)
                         if(direction<1 or direction>2):
@@ -206,9 +198,7 @@ class API_node(Node):
                     msg="Pick Up Screw: Enter the screw number to pick up (1-6) or Cancel"
                     inputMsg.message=msg
                     self.askInputPub.publish(inputMsg)
-                    while not self.inputReceived:
-                        pass
-                    self.inputReceived=False
+                    self.inputSem.acquire()
                     try:
                         screw=int(self.input.message)
                         if(screw<1 or screw>6):
@@ -223,9 +213,7 @@ class API_node(Node):
                     msg="Present to Operator: Enter the side to present (1-2) or Cancel"
                     inputMsg.message=msg
                     self.askInputPub.publish(inputMsg)
-                    while not self.inputReceived:
-                        pass
-                    self.inputReceived=False
+                    self.inputSem.acquire()
                     try:
                         side=int(self.input.message)
                         if(side<1 or side>2):
@@ -238,9 +226,7 @@ class API_node(Node):
                         msg="Present to Operator: Enter the face to present (1-4) or Cancel"
                         inputMsg.message=msg
                         self.askInputPub.publish(inputMsg)
-                        while not self.inputReceived:
-                            pass
-                        self.inputReceived=False
+                        self.inputSem.acquire()
                         try:
                             face=int(self.input.message)
                             if(face<1 or face>4):
@@ -255,9 +241,7 @@ class API_node(Node):
                     msg="Present to Operator: Enter the side to present (1-2) or Cancel"
                     inputMsg.message=msg
                     self.askInputPub.publish(inputMsg)
-                    while not self.inputReceived:
-                        pass
-                    self.inputReceived=False
+                    self.inputSem.acquire()
                     try:
                         side=int(self.input.message)
                         if(side<1 or side>2):
@@ -270,9 +254,7 @@ class API_node(Node):
                         msg="Present to Operator: Enter the face to present (1-4) or Cancel"
                         inputMsg.message=msg
                         self.askInputPub.publish(inputMsg)
-                        while not self.inputReceived:
-                            pass
-                        self.inputReceived=False
+                        self.inputSem.acquire()
                         try:
                             face=int(self.input.message)
                             if(face<1 or face>4):
@@ -287,9 +269,7 @@ class API_node(Node):
                     msg="Insert the X offset for the screw (in mm) or Cancel"
                     inputMsg.message=msg
                     self.askInputPub.publish(inputMsg)
-                    while not self.inputReceived:
-                        pass
-                    self.inputReceived=False
+                    self.inputSem.acquire()
                     try:
                         screwX=float(self.input.message)
                     except ValueError:
@@ -299,9 +279,7 @@ class API_node(Node):
                         msg="Insert the Y offset for the screw (in mm) or Cancel"
                         inputMsg.message=msg
                         self.askInputPub.publish(inputMsg)
-                        while not self.inputReceived:
-                            pass
-                        self.inputReceived=False
+                        self.inputSem.acquire()
                         try:
                             screwY=float(self.input.message)
                         except ValueError:
@@ -311,9 +289,7 @@ class API_node(Node):
                         msg="Insert the Z offset for the screw (in mm) or Cancel"
                         inputMsg.message=msg
                         self.askInputPub.publish(inputMsg)
-                        while not self.inputReceived:
-                            pass
-                        self.inputReceived=False
+                        self.inputSem.acquire()
                         try:
                             screwZ=float(self.input.message)
                         except ValueError:
@@ -323,9 +299,7 @@ class API_node(Node):
                         msg="Insert the target to use (1-4) or Cancel"
                         inputMsg.message=msg
                         self.askInputPub.publish(inputMsg)
-                        while not self.inputReceived:
-                            pass
-                        self.inputReceived=False
+                        self.inputSem.acquire()
                         try:
                             targetToUse=int(self.input.message)
                             if(targetToUse<1 or targetToUse>4):
@@ -337,9 +311,7 @@ class API_node(Node):
                         msg="Insert the focal plane to use (0-2) or Cancel"
                         inputMsg.message=msg
                         self.askInputPub.publish(inputMsg)
-                        while not self.inputReceived:
-                            pass
-                        self.inputReceived=False
+                        self.inputSem.acquire()
                         try:
                             focalPlane=int(self.input.message)
                             if(focalPlane<0 or focalPlane>2):
@@ -351,9 +323,7 @@ class API_node(Node):
                         msg="Insert the screw recipe ID to use (1-5) or Cancel"
                         inputMsg.message=msg
                         self.askInputPub.publish(inputMsg)
-                        while not self.inputReceived:
-                            pass
-                        self.inputReceived=False
+                        self.inputSem.acquire()
                         try:
                             screwRecipeID=int(self.input.message)
                             if(screwRecipeID<1 or screwRecipeID>5):
@@ -365,9 +335,7 @@ class API_node(Node):
                         msg="Screw Area: Tighten the screw inside the area (Yes) or outside the area (No)? Yes/No/Cancel"
                         inputMsg.message=msg
                         self.askInputPub.publish(inputMsg)
-                        while not self.inputReceived:
-                            pass
-                        self.inputReceived=False
+                        self.inputSem.acquire()
                         match self.input.message.lower():
                             case "yes":
                                 screwArea=True
@@ -408,8 +376,41 @@ class API_node(Node):
                         self.screwBayStateClient.call_async(self.screwBayReq)
                     self.functionBlockCalled=False
                     '''
-                    return 
-                                       
+
+                    self.screwBayReq.bay_number=6
+                    screwBay=[]
+                    for i in range(self.screwBayReq.bay_number):
+                        slot=ScrewSlot()
+                        inputMsg.type=inputType.SCREW_SLOT
+                        inputMsg.message=f"Screw Bay Editor: Enter parameters for slot {i+1} as a list ['MAX_IDX_X','MAX_IDX_Y','nextIdxX','nextIdxY'] or Cancel"
+                        self.askInputPub.publish(inputMsg)
+                        self.inputSem.acquire()
+
+                        if(self.input.type!=inputType.SCREW_SLOT):
+                            cancelAction=True
+                            break
+                        try:
+                            slot_params=ast.literal_eval(self.input.message)
+                            if(len(slot_params)!=4):
+                                cancelAction=True
+                                break
+                            slot.max_idx_x=slot_params[0]
+                            slot.max_idx_y=slot_params[1]
+                            slot.next_idx_x=slot_params[2]
+                            slot.next_idx_y=slot_params[3]
+                        except Exception as e:
+                            self.get_logger().info(f"[client_API] Error parsing slot parameters: {e}")
+                            cancelAction=True
+                            break
+                            
+                        screwBay.append(slot)
+                    if(not cancelAction):
+                        self.screwBayReq.screw_bays=screwBay
+                        self.get_logger().info(f"[client_API] Calling setScrewBayState for {self.screwBayReq.bay_number}")
+                        self.screwBayStateClient.call_async(self.screwBayReq)
+                    self.functionBlockCalled=False
+                    return
+
             if(cancelAction):
                 self.functionBlockCalled=False
                 self.get_logger().info(f"[client_API] Action cancelled by the user.")
@@ -457,6 +458,7 @@ class API_node(Node):
         self.functionBlockCalled=False
         self.goNext=True
         self.get_logger().info(f"[CLIENT NODE] Action result: State:{self.functionBlockState}, Success:{self.functionBlockResult}, Msg:{self.functionBlockMsg}")
+        self.askInputPub.publish() #Clear any pending input request.
 
 
     def goal_feedback_callback(self,feedbackMsg: CallFunctionBlock.Feedback) -> None:
@@ -478,12 +480,9 @@ class API_node(Node):
                 inputMsg.message=self.functionBlockMsg
                 self.askInputPub.publish(inputMsg)
                 self.lastTime=time.time()
-                while not self.inputReceived and self.input.type!=inputType.ERROR_CHECK:
-                    if(time.time()-self.lastTime>1):
-                        self.lastTime=time.time()
-                        self.get_logger().info(f"Waiting for error check input...{self.inputReceived} {self.input.type} {inputType.ERROR_CHECK}")
-                    pass
-                self.inputReceived=False
+                while self.input.type!=inputType.ERROR_CHECK:
+                    self.get_logger().info(f"[client_API] Waiting for error check input..")
+                    self.inputSem.acquire()
 
                 
                 self.errorCheckPub.publish(Empty())
@@ -496,18 +495,15 @@ class API_node(Node):
                 inputMsg.type=inputType.OK
                 inputMsg.message="Picture needed for screw detection! (OK)"
                 self.askInputPub.publish(inputMsg)
-                while not self.inputReceived and self.input.type!=inputType.OK:
-                    pass
-                self.inputReceived=False
+                while self.input.type!=inputType.OK:
+                    self.inputSem.acquire()
 
 
                 inputMsg.type=inputType.INTEGER
                 msg="Select Focal Plane: Enter the focal plane to use (0-2)"
                 inputMsg.message=msg
                 self.askInputPub.publish(inputMsg)
-                while not self.inputReceived:
-                    pass
-                self.inputReceived=False
+                self.inputSem.acquire()
                 try:
                     focalPlane=int(self.input.message)
                     if(focalPlane<0 or focalPlane>2):
@@ -519,9 +515,7 @@ class API_node(Node):
                 msg="Select ROI ID: Enter the ROI ID to use (0-3)"
                 inputMsg.message=msg
                 self.askInputPub.publish(inputMsg)
-                while not self.inputReceived:
-                    pass
-                self.inputReceived=False
+                self.inputSem.acquire()
                 try:
                     roiID=int(self.input.message)
                     if(roiID<0 or roiID>3):
@@ -533,9 +527,8 @@ class API_node(Node):
                 msg="Find Screw: Find the screw in the image? Yes/No"
                 inputMsg.message=msg
                 self.askInputPub.publish(inputMsg)
-                while not self.inputReceived and self.input.type!=inputType.YES_NO:
-                    pass
-                self.inputReceived=False
+                while self.input.type!=inputType.YES_NO:
+                    self.inputSem.acquire()
                 findScrew = inputMsg.message=="Yes"
 
                 self.get_logger().info(f"[client_API] Received picture request with focalPlane:{focalPlane}, roiID:{roiID}, findScrew:{findScrew}")
@@ -546,9 +539,8 @@ class API_node(Node):
                 inputMsg.type=inputType.OK
                 inputMsg.message="Picture needed for vision check! (OK)"
                 self.askInputPub.publish(inputMsg)
-                while not self.inputReceived and self.input.type!=inputType.OK:
-                    pass
-                self.inputReceived=False
+                while self.input.type!=inputType.OK:
+                    self.inputSem.acquire()
                 self.sendOffsetData(feedbackMsgType)
             case _:
                 self.get_logger().info(f"[client_API] Feedback: {self.functionBlockMsg}")
@@ -567,8 +559,7 @@ class API_node(Node):
             return
 
         self.input=deepcopy(msg)
-        self.inputReceived=True
-        self.get_logger().info(f"[client_API] Received input: {self.input.message} of type {self.input.type}")
+        self.inputSem.release()
 
 
 

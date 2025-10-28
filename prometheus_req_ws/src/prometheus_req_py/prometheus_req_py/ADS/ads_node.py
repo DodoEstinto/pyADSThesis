@@ -129,7 +129,7 @@ class ADS_Node(Node):
 
         self.plc= pyads.Connection(PLC_NET_ID, pyads.PORT_TC3PLC1, PLC_IP)
         self.plc.open()
-        
+        self.get_logger().info(f"[ADS_Node] Connected to PLC at {PLC_IP} with NET ID {PLC_NET_ID} from client NET ID {self.CLIENT_NETID}.")
         #Set a notification on the equipment status to publish it on a topic.
         statusMemory=pyads.NotificationAttrib(ctypes.sizeof(EquipmentStatus_ctype))#ctypes.sizeof(EquipmentStatus_ctype)
         self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
