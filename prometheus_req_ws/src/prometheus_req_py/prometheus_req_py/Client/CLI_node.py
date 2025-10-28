@@ -72,9 +72,10 @@ def send_command():
         return
     if value == inputType.CALLBLOCK:
         message = select_callblock()
-    else:
+    elif value not in [inputType.OK, inputType.OK]:
         message = input("Enter message string: ")
-
+    else:
+        message = "None"
     if message is None:
         return
     
@@ -104,7 +105,7 @@ def receive_last_feedback():
         "--qos-reliability", "reliable",
         "--qos-durability","transient_local",
         "--qos-history","keep_last",
-        "--qos-depth","5",
+        "--qos-depth","1",
         "askinput",
         "prometheus_req_interfaces/msg/InputOutput"
     ]

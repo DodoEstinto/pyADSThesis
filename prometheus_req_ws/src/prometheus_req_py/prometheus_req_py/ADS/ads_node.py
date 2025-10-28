@@ -118,7 +118,7 @@ class ADS_Node(Node):
         pyads.set_local_address(CLIENT_NETID)
 
         #change based on the credential you are connecting to. To run only the first time.
-        if(False):
+        if(True):
             self.declare_parameter("CLIENT_IP","None")
             CLIENT_IP = self.get_parameter('CLIENT_IP').value
             pyads.add_route_to_plc(CLIENT_NETID,CLIENT_IP,PLC_IP,"Administrator","1",route_name="pyADS")
@@ -130,11 +130,11 @@ class ADS_Node(Node):
         #Set a notification on the equipment status to publish it on a topic.
         statusMemory=pyads.NotificationAttrib(ctypes.sizeof(EquipmentStatus_ctype))#ctypes.sizeof(EquipmentStatus_ctype)
         self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
-
+        #self.plc.write_by_name("GVL_ATS.requests.loadTray.errorAck",True,pyads.PLCTYPE_BOOL)
         self.first_update()
 
         
-    def block_execute_callback(self,goalHandler):
+    def block_execute_callback(self,goalHandler) -> CallFunctionBlock.Result:
         '''
         Callback for the action server. This function is called when a client sends a request to the action server.
         First it checks if the block is ready to be executed, then it runs the checks and manages the parameters.
@@ -224,16 +224,7 @@ class ADS_Node(Node):
                 self.publishFeedback(goalHandler, f"Function Block {functionBlockName} is executing...", self.actionTimerDelay)
             #self.get_logger().info(f"[DEBUG]Function Block {functionBlockName} executed, waiting for the result...")
             
-            '''
-            TODO: temporarily disabled as it creates problems with functions like mrTrolleyVCheck, really needed?
-            #Wait for busy to be false
-            while(self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.Busy",pyads.PLCTYPE_BOOL)):
-                if(time.time()-self.lastTime>self.actionTimerDelay):
-                    self.lastTime=time.time()
-                    feedback_msg.msgType=msgType.NORMAL
-                    feedback_msg.msg="Busy! Waiting..."
-                    goalHandler.publish_feedback(feedback_msg)
-            '''
+
             self.get_logger().info(f"[DEBUG]Function Block {functionBlockName} executed.")
             actualState=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT)
             self.publishFeedback(goalHandler, f"Handling the function Block {functionBlockName}",0)

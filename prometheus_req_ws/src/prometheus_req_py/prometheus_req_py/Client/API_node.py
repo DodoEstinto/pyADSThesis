@@ -28,7 +28,7 @@ import urllib3
 import ast
 import threading
 import time
-
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 
 class API_node(Node):
 
@@ -36,7 +36,12 @@ class API_node(Node):
     def __init__(self):
         super().__init__('api_node')
 
+        # Define callback groups
+        self.main_group = MutuallyExclusiveCallbackGroup() 
+        self.input_group = ReentrantCallbackGroup()            
+        self.action_group = ReentrantCallbackGroup()   
         self.state=EquipmentStatus()
+
         stateQos=QoSProfile(
             depth=1,
             durability=QoSDurabilityPolicy.TRANSIENT_LOCAL
@@ -45,7 +50,8 @@ class API_node(Node):
             EquipmentStatus,
             'state',
             self.state_update_callback,
-            qos_profile=stateQos)
+            qos_profile=stateQos,
+            callback_group=self.main_group)
         
         #it's essential that we do not lost the acks due to a networking failure
         #so we guarantee that samples are delivered, also trying multiple times.
@@ -71,14 +77,14 @@ class API_node(Node):
             qos_profile=qos
         )
         inputQos=QoSProfile(
-            depth=5,
+            depth=1,
             reliability=QoSReliabilityPolicy.RELIABLE,
             durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
             history=QoSHistoryPolicy.KEEP_LAST
              )
         
         self.askInputPub = self.create_publisher(InputOutput,'askinput',qos_profile=inputQos)
-        self.receiveInputSub= self.create_subscription(InputOutput,'receiveinput',self.receive_input_callback,qos_profile=inputQos)
+        self.receiveInputSub= self.create_subscription(InputOutput,'receiveinput',self.receive_input_callback,qos_profile=inputQos,callback_group=self.input_group)
         self.inputReceived=False
         self.input=InputOutput()
         self.functionBlockCalled=False
@@ -91,7 +97,7 @@ class API_node(Node):
         self.goNext=False
         self.errorChecked=False
 
-        self.functionBlockClient=ActionClient(self,CallFunctionBlock,"CallFunctionBlock")
+        self.functionBlockClient=ActionClient(self,CallFunctionBlock,"CallFunctionBlock",callback_group=self.action_group)
         while not self.functionBlockClient.wait_for_server(timeout_sec=1):
             self.get_logger().info('service not available, waiting again...')
             pass
@@ -104,61 +110,7 @@ class API_node(Node):
         self.stateSub  # prevent unused variable warning
 
   
-    """
-    def start_sequence(self):  
-        '''
-        Initiate a sequence of building block calls.
-        '''
-        self.inSequence=True
-
-        if(not self.errorChecked):
-            choosenSequence=SequenceDialog(self.root,title="Starting Sequence",options=ADS_CONSTANTS.BUILDING_BLOCKS).result
-            if(choosenSequence is None):
-                choosenSequence=[]
-            self.sequence = iter(choosenSequence)
-        else:
-            self.get_logger().info("[client_API] Sequence interrupted because error check, resuming sequence")
-            self.updateResponseText("Sequence interrupted because error check, resuming sequence.", isResult=False)
-
-        self.errorChecked=False
-        self.sequenceAborted = False
-        self.goNext=True
-        if(not self.functionBlockCalled):
-
-            self.call_next_block()
-        else:
-            self.get_logger().info("[client_API] Cannot start sequence, another function block is running.")
-            self.updateResponseText("Cannot start sequence, another function block is running.", isResult=False)
-            self.inSequence=False
-
-    def call_next_block(self):
-        '''
-        Call the next block in the sequence.
-        '''
-        if self.sequenceAborted:
-            self.get_logger().info("[client_API] Sequence aborted, stopping...")
-            self.sequenceAborted = False
-            self.functionBlockCalled = False
-            return
-        while(not self.goNext):
-            self.root.update()
-        if(self.errorChecked):
-            self.inSequence=False
-            self.functionBlockCalled=False
-            return
-        self.goNext=False
-        try:
-            block = next(self.sequence)
-            self.get_logger().info(f"[client_API] Calling Block {block} in the sequence")
-            self.call_block(block, override=True)
-            self.call_next_block()
-        except StopIteration:
-            self.inSequence=False
-            self.functionBlockCalled = False
-            self.get_logger().info("[client_API] Sequence completed!")
-            self.updateResponseText("Sequence completed!", isResult=False)
-    """
-
+  
     def call_block(self, name:str,override=False) -> None:
         '''
         This function is called when the building block buttons are pressed.
@@ -542,7 +494,7 @@ class API_node(Node):
                 self.get_logger().info("Asking a photo for screw...")
                 inputMsg=InputOutput()
                 inputMsg.type=inputType.OK
-                inputMsg.message="Picture needed for screw detection!"
+                inputMsg.message="Picture needed for screw detection! (OK)"
                 self.askInputPub.publish(inputMsg)
                 while not self.inputReceived and self.input.type!=inputType.OK:
                     pass
@@ -592,7 +544,7 @@ class API_node(Node):
                 self.get_logger().info("Asking a photo for vision check...")
                 inputMsg=InputOutput()
                 inputMsg.type=inputType.OK
-                inputMsg.message="Picture needed for vision check!"
+                inputMsg.message="Picture needed for vision check! (OK)"
                 self.askInputPub.publish(inputMsg)
                 while not self.inputReceived and self.input.type!=inputType.OK:
                     pass
@@ -620,7 +572,7 @@ class API_node(Node):
 
 
 
-    def sendOffsetData(self,msgType,focalPlane:int=0, roiID:int=0, findScrew:bool=False) -> None:
+    def sendOffsetData(self,msgType:CallFunctionBlock.Feedback.msg_type,focalPlane:int=0, roiID:int=0, findScrew:bool=False) -> None:
         '''
         Call the function to calculate the picture offset and publish it.
         :param msgType: The type of message to send.
@@ -658,7 +610,7 @@ class API_node(Node):
         response.state=deepcopy(self.state)
         return response
 
-    def calculate_picture_offset(self,askedAction,calibrationPlane=0,roiId=0,findScrew=False) -> tuple[bool,float,float,float]:
+    def calculate_picture_offset(self,askedAction:msgType,calibrationPlane:int=0,roiId:int=0,findScrew:bool=False) -> tuple[bool,float,float,float]:
             """
             Calculate the offset of the picture.
             :param askedAction: The type of action to perform (ASK_PICTURE_SCREW or ASK_PICTURE_VCHECK).
