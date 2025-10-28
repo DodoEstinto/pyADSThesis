@@ -3,6 +3,7 @@ import subprocess
 from prometheus_req_py.ADS.utils import inputType
 import prometheus_req_py.ADS.constants as constants
 import re
+from rosidl_runtime_py import message_to_ordereddict
 
 def print_menu():
     '''
@@ -125,16 +126,32 @@ def get_status():
         "request_state",
         "prometheus_req_interfaces/srv/RequestState"
     ]
-    print("Executing:", " ".join(ros2_cmd))
+    #print("Executing:", " ".join(ros2_cmd))
     try:
         result= subprocess.run(ros2_cmd, check=True,capture_output=True,
             text=True)
         
-        output = result.stdout
+        output = result.stdout.strip()
         #output= re.sub()
         #output = output.split(",")
-        print(output)
+        # Inserisce a capo dopo le virgole seguite da spazio
+        
+        #remove all useless lines
+        formatted_msg = re.sub(r',\s*', ',\n    ', output)
 
+        #adds \n after params opening parenthesis
+        formatted_msg = re.sub(r'\(', '(\n    ', formatted_msg)
+
+        #adds \n before closing parenthesis
+        formatted_msg = re.sub(r'\)', '\n)', formatted_msg)
+        # Remove extra blank lines
+        formatted_msg = re.sub(r'    (?!max|next)','', formatted_msg)
+        #Remove useless lines
+        formatted_msg = re.sub(r'^requester.*(\n).*(\n).*(\n)*.(\n).*(\n).*(\n).*(\n).*(\n)','\n', formatted_msg)
+        formatted_msg = re.sub(r'prometheus_req_interfaces.msg.ScrewSlot','ScrewSlot', formatted_msg)
+        formatted_msg = re.sub(r'screw_bay=\[','', formatted_msg)
+        print(formatted_msg)
+        
     except subprocess.CalledProcessError as e:
         if e.returncode == 124:
             print("No message received within timeout.")
