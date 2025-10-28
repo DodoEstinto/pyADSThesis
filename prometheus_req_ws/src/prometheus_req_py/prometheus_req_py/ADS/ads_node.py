@@ -118,7 +118,7 @@ class ADS_Node(Node):
         pyads.set_local_address(CLIENT_NETID)
 
         #change based on the credential you are connecting to. To run only the first time.
-        if(True):
+        if(False):
             self.declare_parameter("CLIENT_IP","None")
             CLIENT_IP = self.get_parameter('CLIENT_IP').value
             pyads.add_route_to_plc(CLIENT_NETID,CLIENT_IP,PLC_IP,"Administrator","1",route_name="pyADS")
@@ -454,11 +454,11 @@ class ADS_Node(Node):
             slot.next_idx_x = src_slot.nextIdxX
             slot.next_idx_y = src_slot.nextIdxY
             dst.screw_bay.append(slot)
-        dst.active_state_fsm_string = str(src.activeStateFSMString)
-        dst.active_state_mr_fsm_string = str(src.activeStateMRFSMString)
-        dst.active_state_sr_fsm_string = str(src.activeStateSRFSMString)
-        dst.active_state_conveyor_string = str(src.activeStateConveyorString)
-        dst.active_state_system_safety_test = str(src.activeStateSystemSafetyTest)
+        dst.active_state_fsm_string = str(src.activeStateFSMString.data)
+        dst.active_state_mr_fsm_string = str(src.activeStateMRFSMString.data)
+        dst.active_state_sr_fsm_string = str(src.activeStateSRFSMString.data)
+        dst.active_state_conveyor_string = str(src.activeStateConveyorString.data)
+        dst.active_state_system_safety_test = str(src.activeStateSystemSafetyTest.data)
         return dst
 
     def status_callback(self,notification,_): #_=data
