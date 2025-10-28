@@ -31,6 +31,7 @@ from rclpy.action import ActionServer as rclpyActionServer
 from prometheus_req_py.ADS.FunctionBlocks import *
 import prometheus_req_py.ADS.checks as checks
 from functools import partial
+import threading
 
 class ADS_Node(Node):
     """
@@ -79,7 +80,8 @@ class ADS_Node(Node):
 
 
         self.picture= None
-        self.errorCheckEvent = False
+        self.errorCheckSem = threading.Semaphore(0)
+        self.askPictureSem = threading.Semaphore(0)
         self.askPictureEvent = False
         #timerPeriod = 1  # seconds
         #self.timer = self.create_timer(timerPeriod, self.timer_callback)
@@ -111,17 +113,18 @@ class ADS_Node(Node):
         self.declare_parameter("CLIENT_NETID","None")
         self.declare_parameter("PLC_IP","None")
         self.declare_parameter("PLC_NET_ID","None")
-        CLIENT_NETID = self.get_parameter('CLIENT_NETID').value
+        self.CLIENT_NETID = self.get_parameter('CLIENT_NETID').value
         PLC_IP= self.get_parameter('PLC_IP').value
         PLC_NET_ID = self.get_parameter('PLC_NET_ID').value
+        
         pyads.open_port()
-        pyads.set_local_address(CLIENT_NETID)
-
+        pyads.set_local_address(self.CLIENT_NETID)
+        
         #change based on the credential you are connecting to. To run only the first time.
         if(False):
             self.declare_parameter("CLIENT_IP","None")
             CLIENT_IP = self.get_parameter('CLIENT_IP').value
-            pyads.add_route_to_plc(CLIENT_NETID,CLIENT_IP,PLC_IP,"Administrator","1",route_name="pyADS")
+            pyads.add_route_to_plc(self.CLIENT_NETID,CLIENT_IP,PLC_IP,"Administrator","1",route_name="pyADS")
         pyads.close_port()
 
         self.plc= pyads.Connection(PLC_NET_ID, pyads.PORT_TC3PLC1, PLC_IP)
@@ -314,7 +317,7 @@ class ADS_Node(Node):
         This function is called when the client aknowledge the error check.
         """
         self.get_logger().info("[ADS]ERROR CHECK CALLBACK!")
-        self.errorCheckEvent=True
+        self.errorCheckSem.release()
 
 
     def error_check(self,errMsg:str,goalHandler) -> None:
@@ -327,13 +330,10 @@ class ADS_Node(Node):
         msgFeed.msg_type=msgType.ERROR_CHECK
         msgFeed.msg=errMsg
         goalHandler.publish_feedback(msgFeed)
-        self.get_logger().info("MANDATO!")
-        #TODO: mettere semaforo
-        while(not self.errorCheckEvent):
-            pass
 
-        self.get_logger().info("Uscito!")
-        self.errorCheckEvent=False
+        self.errorCheckSem.acquire()
+        self.get_logger().info("[Debug]Error check acknowledged by the client.")
+
 
 
     def askPicture(self,goalHandler,msg):
@@ -349,10 +349,7 @@ class ADS_Node(Node):
         msg_feed.msg=msg
         goalHandler.publish_feedback(msg_feed)
         self.get_logger().info("[Debug]Waiting for the picture...")
-        while(not self.askPictureEvent):
-            #rclpy.spin_once(self)
-            pass
-        self.askPictureEvent=False
+        self.askPictureSem.acquire()
         #we don't need data_valid for now
         return self.offset[1:]
 
@@ -366,7 +363,7 @@ class ADS_Node(Node):
         self.get_logger().info("[ADS]ASK PICTURE CALLBACK!")
         self.offset=(offset.data_valid,offset.x, offset.y, offset.theta)
 
-        self.askPictureEvent=True
+        self.askPictureSem.release()
         
     def setScrewBayState_callback(self,request,response):
         '''
@@ -474,14 +471,19 @@ class ADS_Node(Node):
         self.statePub.publish(statusUpdate)
         
 
+
 def main(args=None):
     rclpy.init(args=args)
     pyads_node =  ADS_Node()
     executor = MultiThreadedExecutor()
     executor.add_node(pyads_node)
-    executor.spin()
-    pyads_node.destroy_node()
-    rclpy.shutdown()
+    try:
+        executor.spin()
+    except KeyboardInterrupt:
+        pyads_node.get_logger().info("Shutting down due to KeyboardInterrupt")
+    finally:
+        pyads_node.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
