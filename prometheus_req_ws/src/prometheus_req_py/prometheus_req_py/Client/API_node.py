@@ -137,10 +137,10 @@ class API_node(Node):
                         pass
                     self.inputReceived=False
                     self.get_logger().info(f"[client_API] Received input: {self.input.message} of type {self.input.type}")
-                    match self.input.message:
-                        case "Yes":
+                    match self.input.message.lower():
+                        case "yes":
                             self.ActionReq.bool_param1=True
-                        case "No":
+                        case "no":
                             self.ActionReq.bool_param1=False
                         case _:
                             cancelAction=True
@@ -155,10 +155,10 @@ class API_node(Node):
                     while not self.inputReceived:
                         pass
                     self.inputReceived=False
-                    match self.input.message:
-                        case "Yes":
+                    match self.input.message.lower():
+                        case "yes":
                             self.ActionReq.bool_param1=True
-                        case "No":
+                        case "no":
                             self.ActionReq.bool_param1=False
                         case _:
                             cancelAction=True
