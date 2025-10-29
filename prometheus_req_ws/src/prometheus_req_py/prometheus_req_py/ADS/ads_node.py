@@ -84,12 +84,9 @@ class ADS_Node(Node):
         self.errorCheckSem = threading.Semaphore(0)
         self.askPictureSem = threading.Semaphore(0)
         self.askPictureEvent = False
-        #timerPeriod = 1  # seconds
-        #self.timer = self.create_timer(timerPeriod, self.timer_callback)
         self.lastTime=time.time()
         self.actionTimerDelay=3 #seconds
         self.lastStatus=None
-
         
         #Initialize the function blocks management methods. Treat them as methods of the ADS_Node class.
         self.manageScrew = partial(screwTemplate.manageScrew, self)
@@ -101,9 +98,7 @@ class ADS_Node(Node):
         self.managePresent = partial(presentTemplate.managePresent, self)
         self.publishFeedback= partial(publishFeedback, self)
         self.manageStackTray = partial(stackTray.manageStackTray, self)
-        self.manageGyroGrpRotate = partial(gyroGrpRotate.manageGyroGrpRotate, self)
-        
-        
+        self.manageGyroGrpRotate = partial(gyroGrpRotate.manageGyroGrpRotate, self) 
 
         # Initialize the checks methods. Treat them as methods of the ADS_Node class.
         self.checkPositionerRotate = partial(checks.checkPositionerRotate, self)
@@ -127,15 +122,10 @@ class ADS_Node(Node):
             self.declare_parameter("CLIENT_IP","None")
             CLIENT_IP = self.get_parameter('CLIENT_IP').value
             pyads.add_route_to_plc(self.CLIENT_NETID,CLIENT_IP,PLC_IP,"Administrator","1",route_name="pyADS_"+username)
-        '''
-  
-        
+        '''      
         self.plc= pyads.Connection(PLC_NET_ID, pyads.PORT_TC3PLC1, PLC_IP)
         self.plc.open()
         self.get_logger().info(f"[ADS_Node] Connected to PLC at {PLC_IP} with NET ID {PLC_NET_ID} from client NET ID {self.CLIENT_NETID}.")
-
-
-
         try:
             #Set a notification on the equipment status to publish it on a topic.
             statusMemory=pyads.NotificationAttrib(ctypes.sizeof(EquipmentStatus_ctype))
@@ -150,7 +140,6 @@ class ADS_Node(Node):
             username=os.getlogin().replace(" ","_")
             pyads.add_route_to_plc(self.CLIENT_NETID,CLIENT_IP,PLC_IP,"Administrator","1",route_name="pyADS_"+username)
             self.get_logger().error(f"[ADS_Node] Added route to PLC, please restart the node.")
-
         
     def block_execute_callback(self,goalHandler) -> CallFunctionBlock.Result:
         '''
@@ -239,7 +228,6 @@ class ADS_Node(Node):
                         result.msg,result.state=self.manageGyroGrpRotate(goalHandler)
                 case "stackTray":
                         result.msg,result.state=self.manageStackTray(goalHandler)
-
             goalHandler.succeed()
             result.success=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.Done",pyads.PLCTYPE_BOOL)
             self.get_logger().info(f"[DEBUG] Goal Finished {result.success} with message: {result.msg} and state: {result.state}.| Types: {type(result.success)}, {type(result.msg)}, {type(result.state)}")
@@ -252,7 +240,6 @@ class ADS_Node(Node):
             result.state=actualState
             return result
     
-
     def manageParameters(self,req,functionBlockName:str)-> None:
         '''
         Manage the parameters of the function block.
@@ -284,8 +271,6 @@ class ADS_Node(Node):
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.stackLevel",req.int_param1,pyads.PLCTYPE_INT)
             case _:
                   pass
-            
-
 
     def runChecks(self,functionBlockName:str) -> tuple[bool,str]:
         '''
@@ -293,7 +278,6 @@ class ADS_Node(Node):
         :param functionBlockName: The name of the function block to check.
         :return: A tuple containing a boolean indicating if the checks passed and, in case of failure, a message explaining it.
         '''
-
         match (functionBlockName):
             case "positionerRotate":
                 return self.checkPositionerRotate()
@@ -304,7 +288,6 @@ class ADS_Node(Node):
             case _:
                 return (True,None) #No checks for other function blocks, return True and None message.
     
-    
     def error_check_callback(self, _):
         """
         Callback for the error check action.
@@ -312,7 +295,6 @@ class ADS_Node(Node):
         """
         self.get_logger().info("[ADS]ERROR CHECK CALLBACK!")
         self.errorCheckSem.release()
-
 
     def error_check(self,errMsg:str,goalHandler) -> None:
         '''
@@ -324,11 +306,8 @@ class ADS_Node(Node):
         msgFeed.msg_type=msgType.ERROR_CHECK
         msgFeed.msg=errMsg
         goalHandler.publish_feedback(msgFeed)
-
         self.errorCheckSem.acquire()
         self.get_logger().info("[Debug]Error check acknowledged by the client.")
-
-
 
     def askPicture(self,goalHandler,msg):
         '''
@@ -453,20 +432,6 @@ class ADS_Node(Node):
          statusUpdate=self.cpy_to_equipment_status_msg(status)
          self.statePub.publish(statusUpdate)
          self.get_logger().info("[ADS_Node] First status update published.")
-
-    def timer_callback(self):
-        '''
-        This function is called periodically. It publishes a status update on the state topic.
-        '''
-        if(self.lastStatus is None):
-            status=self.plc.read_by_name('GVL_ATS.equipmentState',EquipmentStatus_ctype)
-            self.get_logger().info("[ADS_Node]No status received yet, reading from PLC...")
-            statusUpdate=self.cpy_to_equipment_status_msg(status)
-        else:
-            statusUpdate=self.lastStatus
-        self.statePub.publish(statusUpdate)
-        
-
 
 def main(args=None):
     rclpy.init(args=args)
