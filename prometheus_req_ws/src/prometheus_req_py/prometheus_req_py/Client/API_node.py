@@ -158,6 +158,7 @@ class API_node(Node):
                             self.ActionReq.bool_param1=False
                         case _:
                             cancelAction=True
+                
                 case "stackTray":
                     self.get_logger().info("Asking for stack tray number...")
                     inputMsg.type=inputType.INTEGER
@@ -173,9 +174,6 @@ class API_node(Node):
                     
                     except ValueError:
                         cancelAction=True
-
-
-
 
                 case "gyroGrpRot":
                     self.get_logger().info("Asking for gyro gripper rotation direction...")
@@ -354,28 +352,6 @@ class API_node(Node):
 
 
                 case "setScrewBayState":
-                    #TODO: Implement the screw bay editor.
-                    '''
-                    self.screwBayReq.bay_number=6
-                    response=ScrewBayDialog(self.root,screw_bays=self.state.screw_bay,num_slots=self.screwBayReq.bay_number,title="Screw Bay Editor")
-                    if(response.result is None):
-                        pass
-                    else:
-                        screwBay = []
-                        for slot_dict in response.result:
-                            if slot_dict is None:
-                                continue  # skip invalid entries
-                            slot_msg = ScrewSlot()
-                            slot_msg.max_idx_x = slot_dict["MAX_IDX_X"]
-                            slot_msg.max_idx_y = slot_dict["MAX_IDX_Y"]
-                            slot_msg.next_idx_x  = slot_dict["nextIdxX"]
-                            slot_msg.next_idx_y  = slot_dict["nextIdxY"]
-                            screwBay.append(slot_msg)
-                        self.screwBayReq.screw_bays = screwBay
-                        self.get_logger().info(f"[client_API] Calling setScrewBayState for {self.screwBayReq.bay_number} bays with state: {self.screwBayReq.screw_bays}")
-                        self.screwBayStateClient.call_async(self.screwBayReq)
-                    self.functionBlockCalled=False
-                    '''
 
                     self.screwBayReq.bay_number=6
                     screwBay=[]
