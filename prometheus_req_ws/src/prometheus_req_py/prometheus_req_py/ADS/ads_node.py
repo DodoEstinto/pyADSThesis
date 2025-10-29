@@ -138,7 +138,7 @@ class ADS_Node(Node):
 
         try:
             #Set a notification on the equipment status to publish it on a topic.
-            statusMemory=pyads.NotificationAttrib(ctypes.sizeof(EquipmentStatus_ctype))#ctypes.sizeof(EquipmentStatus_ctype)
+            statusMemory=pyads.NotificationAttrib(ctypes.sizeof(EquipmentStatus_ctype))
             self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
             self.first_update()
         
@@ -161,27 +161,9 @@ class ADS_Node(Node):
         :param goalHandler: The goal handler to manage the request.
         :return: The result of the action.
         '''
-        self.get_logger().info(f"[DEBUG]block_execute_callback")
 
         functionBlockName=goalHandler.request.function_block_name
-
-        '''
-        allowedFunctionBlocks=["positionerRotate","loadTray","mrTrolleyVCheck","screwPickup",
-                               "screwTight","depositTray","pickUpTray","present2Op","presentToScrew",
-                               "gyroGrpRot","stackTray"]
-        if(functionBlockName    not in allowedFunctionBlocks):
-            self.get_logger().info(f"[ADS_Node] Function Block {goalHandler.request.function_block_name} not allowed! Allowed function blocks are: {allowedFunctionBlocks}")
-            goalHandler.abort()
-            result=CallFunctionBlock.Result()
-            result.success=False
-            result.msg=f"Function Block {goalHandler.request.function_block_name} not allowed! Allowed function blocks are: {allowedFunctionBlocks}"
-            result.state=999
-            return result
-        '''
-        
-
         result=CallFunctionBlock.Result()
-
         actualState=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT)
         msgState=getReqStateMsg(actualState)
         self.get_logger().info(f"[ADS_Node]State: {actualState}:{msgState}")
