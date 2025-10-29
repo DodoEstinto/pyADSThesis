@@ -50,10 +50,15 @@ class ADS_Node(Node):
             depth=1,
             durability=QoSDurabilityPolicy.TRANSIENT_LOCAL
         )
-        self.statePub = self.create_publisher(EquipmentStatus, 'state',qos_profile=stateQos)
-        self.actionServer= rclpyActionServer(self,CallFunctionBlock,
-                                             "CallFunctionBlock",
-                                             self.block_execute_callback,)
+        self.statePub = self.create_publisher(
+             EquipmentStatus, 
+             'state',
+             qos_profile=stateQos)
+        self.actionServer= rclpyActionServer(
+            self,CallFunctionBlock,
+            "CallFunctionBlock",
+             self.block_execute_callback,)
+        
         qos = QoSProfile(
             depth=10,
             reliability=QoSReliabilityPolicy.RELIABLE
@@ -78,7 +83,6 @@ class ADS_Node(Node):
             'setScrewBayState',
             self.setScrewBayState_callback
         )
-
 
         self.picture= None
         self.errorCheckSem = threading.Semaphore(0)
@@ -367,7 +371,6 @@ class ADS_Node(Node):
             self.plc.write_by_name(f"GVL_ATS.equipmentState.screwBay[{i+1}]",screwBays_ctype[i],ScrewSlot_ctype)
         response.success=True
         return response
-   
 
     def cpy_to_equipment_status_msg(self,src:EquipmentStatus_ctype) -> EquipmentStatus:
         """
