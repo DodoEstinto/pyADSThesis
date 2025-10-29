@@ -32,6 +32,7 @@ from prometheus_req_py.ADS.FunctionBlocks import *
 import prometheus_req_py.ADS.checks as checks
 from functools import partial
 import threading
+import os
 
 class ADS_Node(Node):
     """
@@ -119,12 +120,12 @@ class ADS_Node(Node):
         
         pyads.open_port()
         pyads.set_local_address(self.CLIENT_NETID)
-        
+        username=os.getlogin().replace(" ","_")
         #change based on the credential you are connecting to. To run only the first time.
-        if(False):
+        if(True):
             self.declare_parameter("CLIENT_IP","None")
             CLIENT_IP = self.get_parameter('CLIENT_IP').value
-            pyads.add_route_to_plc(self.CLIENT_NETID,CLIENT_IP,PLC_IP,"Administrator","1",route_name="pyADS")
+            pyads.add_route_to_plc(self.CLIENT_NETID,CLIENT_IP,PLC_IP,"Administrator","1",route_name="pyADS_"+username)
         pyads.close_port()
 
         self.plc= pyads.Connection(PLC_NET_ID, pyads.PORT_TC3PLC1, PLC_IP)
