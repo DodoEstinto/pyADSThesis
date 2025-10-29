@@ -122,7 +122,7 @@ class ADS_Node(Node):
         pyads.set_local_address(self.CLIENT_NETID)
         username=os.getlogin().replace(" ","_")
         #change based on the credential you are connecting to. To run only the first time.
-        if(True):
+        if(False):
             self.declare_parameter("CLIENT_IP","None")
             CLIENT_IP = self.get_parameter('CLIENT_IP').value
             pyads.add_route_to_plc(self.CLIENT_NETID,CLIENT_IP,PLC_IP,"Administrator","1",route_name="pyADS_"+username)
