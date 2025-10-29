@@ -84,10 +84,8 @@ class ADS_Node(Node):
             self.setScrewBayState_callback
         )
 
-        self.picture= None
         self.errorCheckSem = threading.Semaphore(0)
         self.askPictureSem = threading.Semaphore(0)
-        self.askPictureEvent = False
         self.lastTime=time.time()
         self.actionTimerDelay=3 #seconds
         self.lastStatus=None
