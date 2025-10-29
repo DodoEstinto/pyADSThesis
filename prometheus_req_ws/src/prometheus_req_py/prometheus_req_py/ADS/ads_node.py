@@ -213,9 +213,7 @@ class ADS_Node(Node):
                                                                                                              reqState.ST_EXECUTING_2,
                                                                                                              reqState.ST_EXECUTING_3,
                                                                                                              reqState.ST_EXECUTING_4)):
-                self.publishFeedback(goalHandler, f"Function Block {functionBlockName} is executing...", self.actionTimerDelay)
-            #self.get_logger().info(f"[DEBUG]Function Block {functionBlockName} executed, waiting for the result...")
-            
+                self.publishFeedback(goalHandler, f"Function Block {functionBlockName} is executing...", self.actionTimerDelay)            
 
             actualState=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.State",pyads.PLCTYPE_INT)
             self.publishFeedback(goalHandler, f"Handling the function Block {functionBlockName}",0)
@@ -355,10 +353,8 @@ class ADS_Node(Node):
         Callback for the ask picture action.
         This function is called when the client sends a picture.
         """
-
-        self.get_logger().info("[ADS]ASK PICTURE CALLBACK!")
+        self.get_logger().info("[ADS_Node] ask picture callback called.")
         self.offset=(offset.data_valid,offset.x, offset.y, offset.theta)
-
         self.askPictureSem.release()
         
     def setScrewBayState_callback(self,request,response):
