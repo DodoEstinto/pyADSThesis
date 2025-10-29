@@ -120,22 +120,36 @@ class ADS_Node(Node):
         
         pyads.open_port()
         pyads.set_local_address(self.CLIENT_NETID)
-        username=os.getlogin().replace(" ","_")
+        pyads.close_port()
         #change based on the credential you are connecting to. To run only the first time.
+        '''
         if(False):
             self.declare_parameter("CLIENT_IP","None")
             CLIENT_IP = self.get_parameter('CLIENT_IP').value
             pyads.add_route_to_plc(self.CLIENT_NETID,CLIENT_IP,PLC_IP,"Administrator","1",route_name="pyADS_"+username)
-        pyads.close_port()
-
+        '''
+  
+        
         self.plc= pyads.Connection(PLC_NET_ID, pyads.PORT_TC3PLC1, PLC_IP)
         self.plc.open()
         self.get_logger().info(f"[ADS_Node] Connected to PLC at {PLC_IP} with NET ID {PLC_NET_ID} from client NET ID {self.CLIENT_NETID}.")
-        #Set a notification on the equipment status to publish it on a topic.
-        statusMemory=pyads.NotificationAttrib(ctypes.sizeof(EquipmentStatus_ctype))#ctypes.sizeof(EquipmentStatus_ctype)
-        self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
-        #self.plc.write_by_name("GVL_ATS.requests.loadTray.errorAck",True,pyads.PLCTYPE_BOOL)
-        self.first_update()
+
+
+
+        try:
+            #Set a notification on the equipment status to publish it on a topic.
+            statusMemory=pyads.NotificationAttrib(ctypes.sizeof(EquipmentStatus_ctype))#ctypes.sizeof(EquipmentStatus_ctype)
+            self.plc.add_device_notification("GVL_ATS.equipmentState",statusMemory,self.status_callback)
+            self.first_update()
+        
+        #Add route to PLC if needed
+        except Exception as e:
+            self.get_logger().error(f"[ADS_Node] Error adding device notification -> {e}")
+            self.declare_parameter("CLIENT_IP","None")
+            CLIENT_IP = self.get_parameter('CLIENT_IP').value
+            username=os.getlogin().replace(" ","_")
+            pyads.add_route_to_plc(self.CLIENT_NETID,CLIENT_IP,PLC_IP,"Administrator","1",route_name="pyADS_"+username)
+            self.get_logger().error(f"[ADS_Node] Added route to PLC, please restart the node.")
 
         
     def block_execute_callback(self,goalHandler) -> CallFunctionBlock.Result:
@@ -144,7 +158,6 @@ class ADS_Node(Node):
         First it checks if the block is ready to be executed, then it runs the checks and manages the parameters.
         Later it sends the request to the PLC and waits for the state change from executing.
         Finally it manages the function block individual behaviour and returns the result.
-
         :param goalHandler: The goal handler to manage the request.
         :return: The result of the action.
         '''
@@ -454,10 +467,14 @@ class ADS_Node(Node):
         self.lastStatus=deepcopy(statusUpdate)
 
     def first_update(self):
+         '''
+         This function is called to perform the first update of the equipment status.
+         It reads the initial status from the PLC and publishes it on the state topic.
+         '''
          status=self.plc.read_by_name('GVL_ATS.equipmentState',EquipmentStatus_ctype)
          statusUpdate=self.cpy_to_equipment_status_msg(status)
          self.statePub.publish(statusUpdate)
-         self.get_logger().info("[ADS_Node]First status update published.")
+         self.get_logger().info("[ADS_Node] First status update published.")
 
     def timer_callback(self):
         '''
