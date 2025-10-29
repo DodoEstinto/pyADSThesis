@@ -190,7 +190,6 @@ class ADS_Node(Node):
                     self.get_logger().info(f"[ADS_Node] Waiting for the function block state to start... ({counter} try of 3)")
                     if counter==3:
                         break
-                pass
             if counter==3:
                 self.get_logger().info(f"[ADS_Node] Function Block {functionBlockName} did not start, aborting goal.")
                 goalHandler.abort()
@@ -254,7 +253,6 @@ class ADS_Node(Node):
             case "loadTray":
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.reqToLoad",req.bool_param1,pyads.PLCTYPE_BOOL)
             case "screwPickup":
-                #screwType
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.screwType",req.int_param1,pyads.PLCTYPE_INT)
             case "screwTight":
                 self.plc.write_by_name(f"GVL_ATS.requests.{functionBlockName}.screwX",req.float_param1,pyads.PLCTYPE_REAL)
@@ -288,7 +286,8 @@ class ADS_Node(Node):
             case "screwPickup":
                 return self.checkScrewPickup()
             case _:
-                return (True,None) #No checks for other function blocks, return True and None message.
+                #No checks for other function blocks, return True and None message.
+                return (True,None) 
     
     def error_check_callback(self, _):
         """
