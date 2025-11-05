@@ -22,12 +22,35 @@ class reqState(IntEnum):
 class msgType(IntEnum):
     '''
     Enum representing the type of message sent via action feedback.
+    0: NORMAL - A normal message.
+    1: ERROR_CHECK - A message indicating an error check is required.
+    2: ASK_PICTURE_SCREW - A message requesting a picture of a screw.
+    3: ASK_PICTURE_VCHECK - A message requesting a picture for visual calibration.
     '''
     NORMAL = 0
     ERROR_CHECK = 1
     ASK_PICTURE_SCREW = 2
     ASK_PICTURE_VCHECK = 3
 
+class inputType(IntEnum):
+    '''
+    Enum representing the type of input requested from the user.
+    The input type is used to determine how the user should respond to a request.
+    0: CALLBLOCK - The user is prompted to call a function block.
+    1: ERROR_CHECK - The user is prompted to check for an error.
+    2: YES_NO - The user is prompted to answer a yes/no question.
+    3: INTEGER - The user is prompted to enter an integer value.
+    4: FLOAT - The user is prompted to enter a float value.
+    5: OK - The user is prompted to acknowledge with an OK.
+    '''
+    CALLBLOCK = 0
+    ERROR_CHECK = 1
+    YES_NO = 2
+    INTEGER = 3
+    FLOAT= 4
+    OK = 5
+    SCREW_SLOT = 6
+    
 
 
 class roiIds(IntEnum):

@@ -15,7 +15,9 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ScrewSlot.msg"
   "msg/EquipmentStatus.msg"
   "msg/Offset.msg"
+  "msg/InputOutput.msg"
   "srv/SetScrewBayState.srv"
+  "srv/RequestState.srv"
   "action/CallFunctionBlock.action"
   DEPENDENCIES std_msgs
 )
