@@ -46,20 +46,20 @@ def init_GUI(self, root: tk.Tk):
     style.configure("WhiteBorder.TFrame", background="#1e1e1e")
 
     # ========== MAIN LAYOUT ==========
-    outerFrame = ttk.Frame(self.root, padding=10)
+    outerFrame = ttk.Frame(self.root, padding=1)
     outerFrame.pack(fill='both', expand=True)
 
-    contentFrame = ttk.Frame(outerFrame, padding=(10, 0))
+    contentFrame = ttk.Frame(outerFrame, padding=(1, 0))
     contentFrame.pack(side='left', fill='both', expand=True)
 
-    buttonFrame = ttk.Frame(outerFrame, padding=10)
+    buttonFrame = ttk.Frame(outerFrame, padding=1)
     buttonFrame.pack(side='right', fill='y')
 
     # ---------- Helper: Section ----------
     def makeSection(parent, title: str) -> ttk.Frame:
         outer = ttk.Frame(parent, style="WhiteBorder.TFrame", padding=5)
-        outer.pack(fill='x', pady=8)
-        inner = ttk.Frame(outer, padding=10, borderwidth=1, relief="solid", style="WhiteBorder.TFrame")
+        outer.pack(fill='x', pady=1)
+        inner = ttk.Frame(outer, padding=3, borderwidth=1, relief="solid", style="WhiteBorder.TFrame")
         inner.pack(fill='x')
 
         title_label = ttk.Label(inner, text=title, font=("Segoe UI", 12, "bold"),
@@ -72,9 +72,9 @@ def init_GUI(self, root: tk.Tk):
 
     # ---------- Helper: Add label-value pair ----------
     def addLabel(frame, field, row):
-        label = ttk.Label(frame, text=f"{field.replace('_', ' ').capitalize()}:", anchor='w')
+        label = ttk.Label(frame, text=f"{field.replace('_', ' ').capitalize()}:", anchor='w', width=25)
         label.grid(row=row, column=0, sticky='w', padx=(0, 10), pady=2)
-        value = ttk.Label(frame, text="N/A", width=20, anchor='w',
+        value = ttk.Label(frame, text="N/A", width=8, anchor='center',
                           background="#3c3c3c", foreground="white")
         value.grid(row=row, column=1, sticky='w', pady=2)
         self.labels[field] = value
@@ -98,7 +98,7 @@ def init_GUI(self, root: tk.Tk):
         addLabel(positionsFrame, f, i)
 
     screwbayFrame = makeSection(contentFrame, "ScrewBay")
-    self.screwText = tk.Text(screwbayFrame, height=10, width=60, font=("Consolas", 10),
+    self.screwText = tk.Text(screwbayFrame, height=6, width=50, font=("Consolas", 10),
                              bg="#252526", fg="#e0e0e0", insertbackground="white",
                              relief="flat", wrap='none')
     self.screwText.pack(fill='x', expand=True)
@@ -106,7 +106,7 @@ def init_GUI(self, root: tk.Tk):
     self.screwText.configure(state='disabled')
 
     statesFrame = makeSection(contentFrame, "States")
-    self.statesText = tk.Text(statesFrame, height=10, width=60, font=("Consolas", 10),
+    self.statesText = tk.Text(statesFrame, height=10, width=50, font=("Consolas", 10),
                               bg="#252526", fg="#e0e0e0", insertbackground="white",
                               relief="flat", wrap='none')
     self.statesText.pack(fill='x', expand=True)
