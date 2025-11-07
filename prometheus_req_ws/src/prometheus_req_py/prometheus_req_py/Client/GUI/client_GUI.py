@@ -6,7 +6,7 @@ def initLabels(self):
     Initialize all labels to "N/A" and neutral background.
     '''
     for field, label in self.labels.items():
-        label.config(text="N/A")
+        label.config(text="N/A", background="#3c3c3c")
 
     # Reset ScrewBay text
     self.screwText.configure(state='normal')
@@ -14,9 +14,16 @@ def initLabels(self):
     self.screwText.insert('1.0', "No ScrewBay data available.\n")
     self.screwText.configure(state='disabled')
 
+    # Reset States text
+    self.statesText.configure(state='normal')
+    self.statesText.delete('1.0', tk.END)
+    self.statesText.insert('1.0', "Waiting for state data...\n")
+    self.statesText.configure(state='disabled')
+
+
 def init_GUI(self, root: tk.Tk):
     '''
-    Create GUI with dark modern style and white-bordered frames including titles inside.
+    Create GUI with dark modern style and aligned sections.
     '''
     self.root = root
     self.root.title("Prometheus Operator Interface")
@@ -25,10 +32,8 @@ def init_GUI(self, root: tk.Tk):
     # ========== STYLING ==========
     style = ttk.Style()
     self.root.configure(bg="#1e1e1e")
-
     style.theme_use("clam")
 
-    # Generale
     style.configure("TFrame", background="#1e1e1e")
     style.configure("TLabel", background="#1e1e1e", foreground="#ffffff", font=("Segoe UI", 10))
     style.configure("TButton", background="#3a7afe", foreground="white",
@@ -38,8 +43,7 @@ def init_GUI(self, root: tk.Tk):
         relief=[("pressed", "sunken"), ("!pressed", "flat")]
     )
 
-    # Frame con bordo bianco
-    style.configure("WhiteBorder.TFrame", background="#1e1e1e")  # sfondo scuro, bordo visibile tramite relief
+    style.configure("WhiteBorder.TFrame", background="#1e1e1e")
 
     # ========== MAIN LAYOUT ==========
     outerFrame = ttk.Frame(self.root, padding=10)
@@ -53,27 +57,26 @@ def init_GUI(self, root: tk.Tk):
 
     # ---------- Helper: Section ----------
     def makeSection(parent, title: str) -> ttk.Frame:
-        # Frame esterno con padding
         outer = ttk.Frame(parent, style="WhiteBorder.TFrame", padding=5)
         outer.pack(fill='x', pady=8)
-
-        # Frame interno con bordino bianco
         inner = ttk.Frame(outer, padding=10, borderwidth=1, relief="solid", style="WhiteBorder.TFrame")
         inner.pack(fill='x')
 
-        # Titolo all'interno del bordo
-        title_label = ttk.Label(inner, text=title, font=("Segoe UI", 12, "bold"), background="#1e1e1e", foreground="white")
-        title_label.pack(anchor='w', pady=(0,10))
+        title_label = ttk.Label(inner, text=title, font=("Segoe UI", 12, "bold"),
+                                background="#1e1e1e", foreground="white")
+        title_label.pack(anchor='w', pady=(0, 10))
 
-        return inner
+        frame = ttk.Frame(inner, style="WhiteBorder.TFrame")
+        frame.pack(fill='x', expand=True)
+        return frame
 
-    def addLabel(frame, field):
-        label_frame = ttk.Frame(frame, style="WhiteBorder.TFrame")
-        label_frame.pack(fill='x', pady=2)
-        label = ttk.Label(label_frame, text=f"{field.replace('_', ' ').capitalize()}:")
-        label.pack(side='left', padx=(0,5))
-        value = ttk.Label(label_frame, text="N/A", width=18, anchor='w', background="#1e1e1e", foreground="white")
-        value.pack(side='left')
+    # ---------- Helper: Add label-value pair ----------
+    def addLabel(frame, field, row):
+        label = ttk.Label(frame, text=f"{field.replace('_', ' ').capitalize()}:", anchor='w')
+        label.grid(row=row, column=0, sticky='w', padx=(0, 10), pady=2)
+        value = ttk.Label(frame, text="N/A", width=20, anchor='w',
+                          background="#3c3c3c", foreground="white")
+        value.grid(row=row, column=1, sticky='w', pady=2)
         self.labels[field] = value
 
     # ---------- Sections ----------
@@ -82,7 +85,8 @@ def init_GUI(self, root: tk.Tk):
         'em_laser_scanner','em_laser_scanner2','em_laser_scanner3','automatic_mode'
     ]
     checksFrame = makeSection(contentFrame, "Checks")
-    for f in checksFields: addLabel(checksFrame, f)
+    for i, f in enumerate(checksFields):
+        addLabel(checksFrame, f, i)
 
     positionsFields = [
         'mgse_to_conveyor','trolley_in_bay','side_2_robot','positioner_is_up',
@@ -90,19 +94,22 @@ def init_GUI(self, root: tk.Tk):
         'rotary_aligned','holder_correction_done'
     ]
     positionsFrame = makeSection(contentFrame, "Positions")
-    for f in positionsFields: addLabel(positionsFrame, f)
+    for i, f in enumerate(positionsFields):
+        addLabel(positionsFrame, f, i)
 
     screwbayFrame = makeSection(contentFrame, "ScrewBay")
-    self.screwText = tk.Text(screwbayFrame, height=10, width=50, font=("Consolas", 10),
-                             bg="#252526", fg="#e0e0e0", insertbackground="white", relief="flat", wrap='none')
-    self.screwText.pack(fill='x')
-    self.screwText.insert('1.0', "Waiting for data...\n")
+    self.screwText = tk.Text(screwbayFrame, height=10, width=60, font=("Consolas", 10),
+                             bg="#252526", fg="#e0e0e0", insertbackground="white",
+                             relief="flat", wrap='none')
+    self.screwText.pack(fill='x', expand=True)
+    self.screwText.insert('1.0', "Waiting for ScrewBay data...\n")
     self.screwText.configure(state='disabled')
 
     statesFrame = makeSection(contentFrame, "States")
-    self.statesText = tk.Text(statesFrame, height=10, width=50, font=("Consolas", 10),
-                              bg="#252526", fg="#e0e0e0", insertbackground="white", relief="flat", wrap='none')
-    self.statesText.pack(fill='x')
+    self.statesText = tk.Text(statesFrame, height=10, width=60, font=("Consolas", 10),
+                              bg="#252526", fg="#e0e0e0", insertbackground="white",
+                              relief="flat", wrap='none')
+    self.statesText.pack(fill='x', expand=True)
     self.statesText.insert('1.0', "Waiting for state data...\n")
     self.statesText.configure(state='disabled')
 
@@ -130,12 +137,14 @@ def init_GUI(self, root: tk.Tk):
               background="#1e1e1e", foreground="#ffffff").pack(pady=(20,5))
 
     self.responseText = tk.Text(buttonFrame, height=4, width=50, font=("Consolas", 10),
-                                bg="#252526", fg="#e0e0e0", insertbackground="white", relief="flat", wrap='word')
+                                bg="#252526", fg="#e0e0e0", insertbackground="white",
+                                relief="flat", wrap='word')
     self.responseText.pack()
     self.responseText.insert('1.0', "Awaiting service call...\n")
     self.responseText.configure(state='disabled')
 
     self.initLabels()
+
 
 def updateLabels(self):
     '''
@@ -173,7 +182,10 @@ def updateLabels(self):
     self.screwText.configure(state='normal')
     self.screwText.delete('1.0', tk.END)
     for i, slot in enumerate(self.state.screw_bay, 1):
-        self.screwText.insert(tk.END, f"ScrewBay[{i}]: max=({slot.max_idx_x},{slot.max_idx_y}) next=({slot.next_idx_x},{slot.next_idx_y})\n")
+        self.screwText.insert(
+            tk.END,
+            f"ScrewBay[{i}]: max=({slot.max_idx_x},{slot.max_idx_y}) next=({slot.next_idx_x},{slot.next_idx_y})\n"
+        )
     self.screwText.configure(state='disabled')
 
 
