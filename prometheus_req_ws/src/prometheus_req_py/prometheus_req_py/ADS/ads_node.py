@@ -230,6 +230,8 @@ class ADS_Node(Node):
                 case "stackTray":
                         result.msg,result.state=self.manageStackTray(goalHandler)
             goalHandler.succeed()
+            while (self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.Busy")):
+                pass
             result.success=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.Done",pyads.PLCTYPE_BOOL)
             self.get_logger().info(f"[DEBUG] Goal Finished {result.success} with message: {result.msg} and state: {result.state}.| Types: {type(result.success)}, {type(result.msg)}, {type(result.state)}")
             return result
