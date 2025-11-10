@@ -113,8 +113,29 @@ class ScrewDialog(simpledialog.Dialog):
         self.entry_screw_recipe_id.grid(row=6, column=1, padx=5, pady=2)
 
         self.area_var = tk.StringVar(value="inside")
-        self.option_menu = ttk.OptionMenu(master, self.area_var, "inside", "outside")
+
+        # Dark OptionMenu styling
+        option_style = ttk.Style()
+        option_style.configure(
+            "Dark.TMenubutton",
+            background="#252526",
+            foreground="#e0e0e0",
+            arrowcolor="#e0e0e0",
+            font=("Segoe UI", 10),
+            padding=6
+        )
+        option_style.map("Dark.TMenubutton",
+                         background=[("active", "#3a7afe")],
+                         foreground=[("active", "#ffffff")])
+
+        self.option_menu = ttk.OptionMenu(master, self.area_var, "inside","inside","outside")
         self.option_menu.grid(row=3, column=1, padx=5, pady=2)
+        self.option_menu.configure(style="Dark.TMenubutton")
+
+        # Make dropdown menu dark too
+        menu = self.option_menu.nametowidget(self.option_menu["menu"])
+        menu.configure(bg="#252526", fg="#e0e0e0", activebackground="#3a7afe", activeforeground="white", borderwidth=0)
+
 
         return self.entry_x  # focus
 
@@ -131,6 +152,24 @@ class ScrewDialog(simpledialog.Dialog):
             }
         except ValueError:
             self.result = None
+
+    def buttonbox(self):
+            apply_dark_theme(self)
+
+            box = ttk.Frame(self)
+            box.pack(side="bottom", fill="x", pady=15)
+
+            btn_frame = ttk.Frame(box)
+            btn_frame.pack(anchor="center")
+
+            btn_ok = ttk.Button(btn_frame, text="OK", command=self.ok)
+            btn_ok.pack(side="left", padx=10)
+
+            btn_cancel = ttk.Button(btn_frame, text="Cancel", command=self.cancel)
+            btn_cancel.pack(side="left", padx=10)
+
+            self.bind("<Return>", self.ok)
+            self.bind("<Escape>", self.cancel)
 
 
 # ---------- SCREW BAY DIALOG ----------
