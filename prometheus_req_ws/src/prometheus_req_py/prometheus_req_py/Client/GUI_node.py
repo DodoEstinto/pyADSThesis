@@ -31,6 +31,7 @@ from prometheus_req_interfaces.srv import SetScrewBayState
 import requests
 import urllib3
 import ast
+import time
 
 class GUI_node(Node):
     '''
@@ -77,6 +78,7 @@ class GUI_node(Node):
             return
         while(not self.goNext):
             self.root.update()
+            time.sleep(0.01)
         if(self.errorChecked):
             self.inSequence=False
             self.functionBlockCalled=False
