@@ -411,7 +411,7 @@ class ADS_Node(Node):
         This function is called each time equipementStatus on the plc changes.
         It parses the notification and publishes the status update on the state topic.
         :param notification: The notification received from the PLC.
-        :param _: Unused paramenter.
+        :param _: Unused data parameter.
         '''
         #WARNING: if you change the type of the notification, you have also to update it in the statusMemory init!
         _,_,value=self.plc.parse_notification(notification,EquipmentStatus_ctype)

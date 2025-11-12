@@ -141,7 +141,7 @@ def get_status():
         # Remove extra blank lines
         formatted_msg = re.sub(r'    (?!max|next)','', formatted_msg)
         #Remove useless lines
-        formatted_msg = re.sub(r'^requester.*(\n).*(\n).*(\n)*.(\n).*(\n).*(\n).*(\n).*(\n)','\n', formatted_msg)
+        formatted_msg = re.sub(r'^requester(.*(\n)){8}','\n', formatted_msg)
         formatted_msg = re.sub(r'prometheus_req_interfaces.msg.ScrewSlot','ScrewSlot', formatted_msg)
         formatted_msg = re.sub(r'screw_bay=\[','', formatted_msg)
         print(formatted_msg)
