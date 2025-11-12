@@ -73,7 +73,7 @@ def send_command():
         return
     if value == inputType.CALLBLOCK:
         message = select_callblock()
-    elif value not in [inputType.OK, inputType.OK]:
+    elif value not in [inputType.OK, inputType.ERROR_CHECK]:
         message = input("Enter message string: ")
     else:
         message = "None"

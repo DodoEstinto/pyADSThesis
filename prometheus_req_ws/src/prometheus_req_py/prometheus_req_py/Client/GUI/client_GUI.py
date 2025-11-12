@@ -72,7 +72,7 @@ def init_GUI(self, root: tk.Tk):
 
     # ---------- Helper: Add label-value pair ----------
     def addLabel(frame, field, row):
-        label = ttk.Label(frame, text=f"{field.replace('_', ' ').capitalize()}:", anchor='w', width=25)
+        label = ttk.Label(frame, text=f"{field.replace('_', ' ').capitalize()}:", anchor='w', width=20)
         label.grid(row=row, column=0, sticky='w', padx=(0, 10), pady=2)
         value = ttk.Label(frame, text="N/A", width=8, anchor='center',
                           background="#3c3c3c", foreground="white")
@@ -173,9 +173,10 @@ def updateLabels(self):
     self.statesText.configure(state='normal')
     self.statesText.delete('1.0', tk.END)
     for f in ['active_state_fsm_string','active_state_mr_fsm_string',
-              'active_state_sr_fsm_string','active_state_conveyor_string',
+              'active_state_sr_fsm_string',
+              #'active_state_conveyor_string', #TODO: it is always empty, debug it.
               'active_state_system_safety_test']:
-        self.statesText.insert(tk.END, f"{f}: {getattr(self.state, f)}\n")
+        self.statesText.insert(tk.END, f"{f}: {getattr(self.state, f)[2:-1]}\n")
     self.statesText.configure(state='disabled')
 
     # Update ScrewBay
