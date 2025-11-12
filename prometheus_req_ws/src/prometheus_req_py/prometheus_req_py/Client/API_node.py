@@ -633,8 +633,9 @@ def main(args=None):
         executor.spin()
     except KeyboardInterrupt:
         pass
-    api_node.destroy_node()
-    rclpy.shutdown()
+    finally:
+        api_node.destroy_node()
+        rclpy.shutdown()
 
 
 

@@ -156,20 +156,23 @@ def main():
     '''
     Main function to run the CLI menu loop.
     '''
-    while True:
-        print_menu()
-        choice = input("Select option: ")
-        if choice == "1":
-            send_command()
-        elif choice == "2":
-            receive_last_feedback()
-        elif choice == "3":
-            get_status()
-        elif choice == "0":
-            print("Exiting.")
-            sys.exit(0)
-        else:
-            print("Option not implemented or invalid.")
-
+    try:
+        while True:
+            print_menu()
+            choice = input("Select option: ")
+            if choice == "1":
+                send_command()
+            elif choice == "2":
+                receive_last_feedback()
+            elif choice == "3":
+                get_status()
+            elif choice == "0":
+                print("Exiting.")
+                sys.exit(0)
+            else:
+                print("Option not implemented or invalid.")
+    except KeyboardInterrupt:
+        print("\nExiting.")
+        sys.exit(0)
 if __name__ == "__main__":
     main()
