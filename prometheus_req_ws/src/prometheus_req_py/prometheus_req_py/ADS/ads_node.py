@@ -118,13 +118,7 @@ class ADS_Node(Node):
         pyads.open_port()
         pyads.set_local_address(self.CLIENT_NETID)
         pyads.close_port()
-        #change based on the credential you are connecting to. To run only the first time.
-        '''
-        if(False):
-            self.declare_parameter("CLIENT_IP","None")
-            CLIENT_IP = self.get_parameter('CLIENT_IP').value
-            pyads.add_route_to_plc(self.CLIENT_NETID,CLIENT_IP,PLC_IP,"Administrator","1",route_name="pyADS_"+username)
-        '''      
+
         self.plc= pyads.Connection(PLC_NET_ID, pyads.PORT_TC3PLC1, PLC_IP)
         self.plc.open()
         self.get_logger().info(f"[ADS_Node] Connected to PLC at {PLC_IP} with NET ID {PLC_NET_ID} from client NET ID {self.CLIENT_NETID}.")

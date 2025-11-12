@@ -13,6 +13,11 @@
 # limitations under the License.
 
 
+'''
+FOR THE MOMENT REFER TO client_GUI.PY FOR THE GUI IMPLEMENTATION.
+'''
+
+'''
 from copy import deepcopy
 from prometheus_req_interfaces.msg import EquipmentStatus, Offset,ScrewSlot
 from prometheus_req_interfaces.action import CallFunctionBlock
@@ -206,3 +211,5 @@ def main(args=None):
 #TODO: needed?
 if __name__ == '__main__':
     main()
+
+'''
