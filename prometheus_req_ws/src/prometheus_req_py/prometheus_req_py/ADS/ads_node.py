@@ -118,13 +118,7 @@ class ADS_Node(Node):
         pyads.open_port()
         pyads.set_local_address(self.CLIENT_NETID)
         pyads.close_port()
-        #change based on the credential you are connecting to. To run only the first time.
-        '''
-        if(False):
-            self.declare_parameter("CLIENT_IP","None")
-            CLIENT_IP = self.get_parameter('CLIENT_IP').value
-            pyads.add_route_to_plc(self.CLIENT_NETID,CLIENT_IP,PLC_IP,"Administrator","1",route_name="pyADS_"+username)
-        '''      
+
         self.plc= pyads.Connection(PLC_NET_ID, pyads.PORT_TC3PLC1, PLC_IP)
         self.plc.open()
         self.get_logger().info(f"[ADS_Node] Connected to PLC at {PLC_IP} with NET ID {PLC_NET_ID} from client NET ID {self.CLIENT_NETID}.")
@@ -230,6 +224,8 @@ class ADS_Node(Node):
                 case "stackTray":
                         result.msg,result.state=self.manageStackTray(goalHandler)
             goalHandler.succeed()
+            while (self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.Busy")):
+                pass
             result.success=self.plc.read_by_name(f"GVL_ATS.requests.{functionBlockName}.Done",pyads.PLCTYPE_BOOL)
             self.get_logger().info(f"[DEBUG] Goal Finished {result.success} with message: {result.msg} and state: {result.state}.| Types: {type(result.success)}, {type(result.msg)}, {type(result.state)}")
             return result
@@ -315,7 +311,8 @@ class ADS_Node(Node):
         Handle the ask picture action.
         '''
         msg_feed=CallFunctionBlock.Feedback()
-        if(goalHandler.request.function_block_name=="screwPickup" or goalHandler.request.function_block_name=="screwTight"):
+        if( goalHandler.request.function_block_name=="screwPickup" or 
+            goalHandler.request.function_block_name=="screwTight"):
             msg_feed.msg_type=msgType.ASK_PICTURE_SCREW
         else:
             msg_feed.msg_type=msgType.ASK_PICTURE_VCHECK
@@ -415,7 +412,7 @@ class ADS_Node(Node):
         This function is called each time equipementStatus on the plc changes.
         It parses the notification and publishes the status update on the state topic.
         :param notification: The notification received from the PLC.
-        :param _: Unused paramenter.
+        :param _: Unused data parameter.
         '''
         #WARNING: if you change the type of the notification, you have also to update it in the statusMemory init!
         _,_,value=self.plc.parse_notification(notification,EquipmentStatus_ctype)

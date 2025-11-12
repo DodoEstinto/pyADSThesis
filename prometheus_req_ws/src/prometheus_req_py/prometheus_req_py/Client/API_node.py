@@ -505,7 +505,7 @@ class API_node(Node):
                 self.askInputPub.publish(inputMsg)
                 while self.input.type!=inputType.YES_NO:
                     self.inputSem.acquire()
-                findScrew = inputMsg.message=="Yes"
+                findScrew = self.input.message.lower()=="yes"
 
                 self.get_logger().info(f"[client_API] Received picture request with focalPlane:{focalPlane}, roiID:{roiID}, findScrew:{findScrew}")
                 self.sendOffsetData(feedbackMsgType,focalPlane,roiID,findScrew)
@@ -633,8 +633,9 @@ def main(args=None):
         executor.spin()
     except KeyboardInterrupt:
         pass
-    api_node.destroy_node()
-    rclpy.shutdown()
+    finally:
+        api_node.destroy_node()
+        rclpy.shutdown()
 
 
 

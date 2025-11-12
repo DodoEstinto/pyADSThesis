@@ -73,7 +73,7 @@ def send_command():
         return
     if value == inputType.CALLBLOCK:
         message = select_callblock()
-    elif value not in [inputType.OK, inputType.OK]:
+    elif value not in [inputType.OK, inputType.ERROR_CHECK]:
         message = input("Enter message string: ")
     else:
         message = "None"
@@ -141,7 +141,7 @@ def get_status():
         # Remove extra blank lines
         formatted_msg = re.sub(r'    (?!max|next)','', formatted_msg)
         #Remove useless lines
-        formatted_msg = re.sub(r'^requester.*(\n).*(\n).*(\n)*.(\n).*(\n).*(\n).*(\n).*(\n)','\n', formatted_msg)
+        formatted_msg = re.sub(r'^requester(.*(\n)){8}','\n', formatted_msg)
         formatted_msg = re.sub(r'prometheus_req_interfaces.msg.ScrewSlot','ScrewSlot', formatted_msg)
         formatted_msg = re.sub(r'screw_bay=\[','', formatted_msg)
         print(formatted_msg)
@@ -156,20 +156,23 @@ def main():
     '''
     Main function to run the CLI menu loop.
     '''
-    while True:
-        print_menu()
-        choice = input("Select option: ")
-        if choice == "1":
-            send_command()
-        elif choice == "2":
-            receive_last_feedback()
-        elif choice == "3":
-            get_status()
-        elif choice == "0":
-            print("Exiting.")
-            sys.exit(0)
-        else:
-            print("Option not implemented or invalid.")
-
+    try:
+        while True:
+            print_menu()
+            choice = input("Select option: ")
+            if choice == "1":
+                send_command()
+            elif choice == "2":
+                receive_last_feedback()
+            elif choice == "3":
+                get_status()
+            elif choice == "0":
+                print("Exiting.")
+                sys.exit(0)
+            else:
+                print("Option not implemented or invalid.")
+    except KeyboardInterrupt:
+        print("\nExiting.")
+        sys.exit(0)
 if __name__ == "__main__":
     main()
