@@ -311,7 +311,8 @@ class ADS_Node(Node):
         Handle the ask picture action.
         '''
         msg_feed=CallFunctionBlock.Feedback()
-        if(goalHandler.request.function_block_name=="screwPickup" or goalHandler.request.function_block_name=="screwTight"):
+        if( goalHandler.request.function_block_name=="screwPickup" or 
+            goalHandler.request.function_block_name=="screwTight"):
             msg_feed.msg_type=msgType.ASK_PICTURE_SCREW
         else:
             msg_feed.msg_type=msgType.ASK_PICTURE_VCHECK
