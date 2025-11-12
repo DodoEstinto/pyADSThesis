@@ -140,7 +140,11 @@ def get_status():
         formatted_msg = re.sub(r'\)', '\n)', formatted_msg)
         # Remove extra blank lines
         formatted_msg = re.sub(r'    (?!max|next)','', formatted_msg)
-        #Remove useless lines
+        '''
+        Remove useless lines.
+        The following regex matches a line starting with 'requester' and the next 8 lines, 
+        removing them from the formatted message for clarity.
+        '''
         formatted_msg = re.sub(r'^requester(.*(\n)){8}','\n', formatted_msg)
         formatted_msg = re.sub(r'prometheus_req_interfaces.msg.ScrewSlot','ScrewSlot', formatted_msg)
         formatted_msg = re.sub(r'screw_bay=\[','', formatted_msg)
