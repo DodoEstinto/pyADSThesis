@@ -58,6 +58,114 @@ def apply_dark_theme(widget):
                     troughcolor=bg,
                     arrowcolor=fg)
 
+
+# ---------- YES/NO/CANCEL DIALOG ----------
+class YesNoCancelDialog(tk.Toplevel):
+    def __init__(self, parent, title, message):
+        super().__init__(parent)
+        apply_dark_theme(self)
+        self.result = None
+        self.title(title)
+        self.geometry("450x160")
+        self.resizable(False, False)
+
+        frame = ttk.Frame(self, padding=20)
+        frame.pack(expand=True, fill="both")
+
+        label = ttk.Label(frame, text=message, wraplength=380, justify="center", font=("Segoe UI", 11))
+        label.pack(pady=10)
+
+        button_frame = ttk.Frame(frame)
+        button_frame.pack(pady=10)
+
+        yes_button = ttk.Button(button_frame, text="Yes", command=self.on_yes)
+        yes_button.pack(side="left", padx=10)
+
+        no_button = ttk.Button(button_frame, text="No", command=self.on_no)
+        no_button.pack(side="left", padx=10)
+
+        cancel_button = ttk.Button(button_frame, text="Cancel", command=self.on_cancel)
+        cancel_button.pack(side="left", padx=10)
+
+        self.grab_set()
+        self.transient(parent)
+        self.wait_window()
+
+    def on_yes(self):
+        self.result = True
+        self.destroy()
+
+    def on_no(self):
+        self.result = False
+        self.destroy()
+
+    def on_cancel(self):
+        self.result = None
+        self.destroy()
+
+# --------- ASK INTEGER DIALOG ----------
+
+class AskIntegerDialog(simpledialog.Dialog):
+    def __init__(self, parent, title="Input Required", prompt="Please enter an integer:", minvalue=None, maxvalue=None):
+        self.prompt = prompt
+        self.minvalue = minvalue
+        self.maxvalue = maxvalue
+        self.value = None
+        super().__init__(parent, title)
+
+    def body(self, master):
+        apply_dark_theme(master)
+        ttk.Label(master, text=self.prompt).pack(pady=10)
+
+        self.entry = ttk.Entry(master, width=20, style="Dark.TEntry",
+                               font=("Consolas", 10), justify="center")
+        self.entry.pack(pady=5)
+        return self.entry  # initial focus
+
+    def apply(self):
+        self.result = self.value
+
+            
+    def buttonbox(self):
+        apply_dark_theme(self)
+
+        box = ttk.Frame(self)
+        box.pack(side="bottom", fill="x", pady=15)
+
+        btn_frame = ttk.Frame(box)
+        btn_frame.pack(anchor="center")
+
+        btn_ok = ttk.Button(btn_frame, text="OK", command=self.check_ok)
+        btn_ok.pack(side="left", padx=10)
+
+        btn_cancel = ttk.Button(btn_frame, text="Cancel", command=self.cancel)
+        btn_cancel.pack(side="left", padx=10)
+
+        self.bind("<Return>", self.ok)
+        self.bind("<Escape>", self.cancel)    
+
+    def check_ok(self):
+        try:
+            self.value = int(self.entry.get())
+            if(self.minvalue is not None):
+                if(self.value < self.minvalue):
+                    raise ValueError("Value below minimum")
+            if(self.maxvalue is not None):
+                if(self.value > self.maxvalue):
+                    raise ValueError("Value above maximum")
+            self.ok()
+        except ValueError:
+            #get actual background value
+            bg = self.entry.cget("background")
+            #flash red background
+            self.entry.delete(0, tk.END)
+            self.entry.insert(0, "Invalid input")
+
+
+            self.result = None
+        
+ 
+
 # ---------- OK DIALOG ----------
 class OkDialog(tk.Toplevel):
     def __init__(self, parent, title="Message", message=""):
@@ -65,7 +173,7 @@ class OkDialog(tk.Toplevel):
         apply_dark_theme(self)
         self.result = False
         self.title(title)
-        self.geometry("450x160")
+        self.geometry("450x200")
         self.resizable(False, False)
 
         frame = ttk.Frame(self, padding=20)
