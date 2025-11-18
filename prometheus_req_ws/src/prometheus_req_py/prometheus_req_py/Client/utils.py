@@ -140,7 +140,7 @@ class AskIntegerDialog(simpledialog.Dialog):
         btn_cancel = ttk.Button(btn_frame, text="Cancel", command=self.cancel)
         btn_cancel.pack(side="left", padx=10)
 
-        self.bind("<Return>", self.ok)
+        self.bind("<Return>", self.check_ok)
         self.bind("<Escape>", self.cancel)    
 
     def check_ok(self):
