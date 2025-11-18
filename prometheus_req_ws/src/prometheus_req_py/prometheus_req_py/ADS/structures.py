@@ -18,8 +18,7 @@ class PLC_STRING_40(ctypes.Structure):
     '''
     _pack_ = 1
     _fields_ = [
-        ("length", ctypes.c_uint8),        # length byte
-        ("data", ctypes.c_char * 40),      # string chars
+        ("data", ctypes.c_char * 41),      # string chars
     ]
 
 class EquipmentStatus_ctype(ctypes.Structure):
@@ -39,8 +38,8 @@ class EquipmentStatus_ctype(ctypes.Structure):
         ("automaticMode", ctypes.c_bool),
         ("mgseToConveyor", ctypes.c_bool),
         ("trolleyInBay", ctypes.c_bool),
-        ("filler", ctypes.c_bool),
-        ("side2Robot", ctypes.c_int16),
+        ("padding", ctypes.c_bool), #to compensate alignment issue.
+        ("side2Robot", ctypes.c_uint16),
         ("positionerIsUp", ctypes.c_bool),
         ("positionerIsDown", ctypes.c_bool),
         ("palletIsInWrkPos", ctypes.c_bool),
@@ -48,6 +47,7 @@ class EquipmentStatus_ctype(ctypes.Structure):
         ("rotaryAligned", ctypes.c_bool),
         ("holderCorrectionDone", ctypes.c_bool),
         ("screwBay", ScrewSlot_ctype * 6),
+        ("trayIsGripped", ctypes.c_bool),
         ("activeStateFSMString", PLC_STRING_40), 
         ("activeStateMRFSMString", PLC_STRING_40),
         ("activeStateSRFSMString", PLC_STRING_40),

@@ -91,7 +91,7 @@ def init_GUI(self, root: tk.Tk):
     positionsFields = [
         'mgse_to_conveyor','trolley_in_bay','side_2_robot','positioner_is_up',
         'positioner_is_down','pallet_is_in_wrk_pos','pallet_is_in_entry_pos',
-        'rotary_aligned','holder_correction_done'
+        'rotary_aligned','holder_correction_done',"tray_is_gripped"
     ]
     positionsFrame = makeSection(contentFrame, "Positions")
     for i, f in enumerate(positionsFields):
@@ -162,7 +162,7 @@ def updateLabels(self):
         'em_laser_scanner','em_laser_scanner2','em_laser_scanner3',
         'automatic_mode','mgse_to_conveyor','trolley_in_bay','side_2_robot',
         'positioner_is_up','positioner_is_down','pallet_is_in_wrk_pos',
-        'pallet_is_in_entry_pos','rotary_aligned','holder_correction_done'
+        'pallet_is_in_entry_pos','rotary_aligned','holder_correction_done','tray_is_gripped'
     ]
 
     for field in all_fields:

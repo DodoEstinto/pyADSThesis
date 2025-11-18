@@ -400,6 +400,7 @@ class ADS_Node(Node):
             slot.next_idx_x = src_slot.nextIdxX
             slot.next_idx_y = src_slot.nextIdxY
             dst.screw_bay.append(slot)
+        dst.tray_is_gripped = src.trayIsGripped
         dst.active_state_fsm_string = str(src.activeStateFSMString.data)
         dst.active_state_mr_fsm_string = str(src.activeStateMRFSMString.data)
         dst.active_state_sr_fsm_string = str(src.activeStateSRFSMString.data)

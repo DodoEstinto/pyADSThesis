@@ -2,11 +2,8 @@
   ros__parameters:
     robot_name: "Prometheus"
 
-    remote_ip: '10.10.10.5'
-    remote_ads: '5.152.54.58.1.1'
-
-    CLIENT_NETID: '10.10.10.50.1.1'
-    CLIENT_IP: '10.10.10.50'
+    CLIENT_NETID: '10.10.10.49.1.1'
+    CLIENT_IP: '10.10.10.49'
 
     PLC_IP: '10.10.10.5'
     PLC_NET_ID: '5.152.54.58.1.1'

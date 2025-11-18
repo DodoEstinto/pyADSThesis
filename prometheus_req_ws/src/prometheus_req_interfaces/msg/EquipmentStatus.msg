@@ -17,6 +17,7 @@ bool pallet_is_in_entry_pos
 bool rotary_aligned
 bool holder_correction_done
 ScrewSlot[6] screw_bay
+bool tray_is_gripped
 string active_state_fsm_string
 string active_state_mr_fsm_string
 string active_state_sr_fsm_string

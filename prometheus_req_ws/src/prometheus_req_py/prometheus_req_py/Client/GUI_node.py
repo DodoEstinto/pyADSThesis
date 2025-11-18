@@ -19,7 +19,7 @@ from copy import deepcopy
 from prometheus_req_interfaces.msg import EquipmentStatus, Offset,ScrewSlot
 from prometheus_req_interfaces.action import CallFunctionBlock
 from prometheus_req_py.ADS.utils import msgType
-from prometheus_req_py.Client.utils import OkDialog,ScrewDialog,ScrewBayDialog,SequenceDialog
+from prometheus_req_py.Client.utils import OkDialog,ScrewDialog,ScrewBayDialog,SequenceDialog,AskIntegerDialog,YesNoCancelDialog
 import prometheus_req_py.ADS.constants as ADS_CONSTANTS
 import tkinter as tk
 from tkinter import messagebox,simpledialog
@@ -113,42 +113,42 @@ class GUI_node(Node):
             #based on the function called, a different parameter is asked.
             match(name):
                 case "loadTray":
-                    answer = messagebox.askyesnocancel("Load Tray", "Load(Yes) or Unload(No) the tray?")
+                    answer = YesNoCancelDialog(self.root, "Load Tray", "Load(Yes) or Unload(No) the tray?").result
                     self.ActionReq.bool_param1=answer
                     if(answer is None):
                         cancelAction=True
                 case "positionerRotate":
-                    answer = messagebox.askyesnocancel("Positioner Rotate", "Rotate clockwise(Yes) or anticlockwise(No)?")
+                    answer = YesNoCancelDialog(self.root, "Positioner Rotate", "Rotate clockwise(Yes) or anticlockwise(No)?").result
                     self.ActionReq.bool_param1=answer
                     if(answer is None):
                         cancelAction=True
                 case "stackTray":
-                    level = simpledialog.askinteger("Stack Tray", "Enter the stack level")
+                    level = AskIntegerDialog(self.root, title="Stack Tray", prompt="Enter the stack level:").result
                     self.ActionReq.int_param1=level
                     if(level is None):
                         cancelAction=True
                 case "gyroGrpRot":
-                    direction = simpledialog.askinteger("Gyro Gripper Rotate", "Enter the direction to rotate (1-2):", minvalue=1, maxvalue=2)
+                    direction = AskIntegerDialog(self.root, title="Gyro Gripper Rotate", prompt="Enter the direction to rotate (1-2):", minvalue=1, maxvalue=2).result
                     self.ActionReq.int_param1=direction
                     if(direction is None):
                         cancelAction=True
                 case "screwPickup":
-                    screw = simpledialog.askinteger("Pick Up Screw", "Enter the screw number to pick up (1-6):", minvalue=1, maxvalue=6)
+                    screw = AskIntegerDialog(self.root, title="Pick Up Screw", prompt="Enter the screw number to pick up (1-6):", minvalue=1, maxvalue=6).result
                     self.ActionReq.int_param1=screw
                     if(screw is None):
                         cancelAction=True
                 case "present2Op":
-                    side = simpledialog.askinteger("Present to Operator", "Enter the side to present (1-2):", minvalue=1, maxvalue=2)
+                    side = AskIntegerDialog(self.root, title="Present to Operator", prompt="Enter the side to present (1-2):", minvalue=1, maxvalue=2).result
                     self.ActionReq.int_param1=side
-                    face = simpledialog.askinteger("Present to Operator", "Enter the face to present (1-4):", minvalue=1, maxvalue=4)
+                    face = AskIntegerDialog(self.root, title="Present to Operator", prompt="Enter the face to present (1-4):", minvalue=1, maxvalue=4).result
                     self.ActionReq.int_param2=face
                     if(side is None or face is None):
                         cancelAction=True
                 #TODO: the Or create a crash. Investigate.
                 case "presentToScrew":
-                    side = simpledialog.askinteger("Present to Operator", "Enter the side to present (1-2):", minvalue=1, maxvalue=2)
+                    side = AskIntegerDialog(self.root, title="Present to screw", prompt="Enter the side to present (1-2):", minvalue=1, maxvalue=2).result
                     self.ActionReq.int_param1=side
-                    face = simpledialog.askinteger("Present to Operator", "Enter the face to present (1-4):", minvalue=1, maxvalue=4)
+                    face = AskIntegerDialog(self.root, title="Present to screw", prompt="Enter the face to present (1-4):", minvalue=1, maxvalue=4).result
                     self.ActionReq.int_param2=face
                     if(side is None or face is None):
                         cancelAction=True
@@ -192,6 +192,9 @@ class GUI_node(Node):
                 self.get_logger().info(f"[GUI_node] Action cancelled by the user.")
                 self.updateResponseText("Action cancelled by the user.", isResult=False)
                 self.sequenceAborted=True
+                #reset the ActionReq to avoid sending invalid data (Nones) in case 
+                #the next block called does not overwrite all the parameters.
+                self.ActionReq= CallFunctionBlock.Goal()
                 return
             #Ask the permission to run the function block.
             self.send_goal_future=self.functionBlockClient.send_goal_async(self.ActionReq,feedback_callback=self.goal_feedback_callback)
