@@ -154,8 +154,6 @@ class AskIntegerDialog(simpledialog.Dialog):
                     raise ValueError("Value above maximum")
             self.ok()
         except ValueError:
-            #get actual background value
-            bg = self.entry.cget("background")
             #flash red background
             self.entry.delete(0, tk.END)
             self.entry.insert(0, "Invalid input")
