@@ -164,7 +164,6 @@ class AskIntegerDialog(simpledialog.Dialog):
 
             self.result = None
         
- 
 
 # ---------- OK DIALOG ----------
 class OkDialog(tk.Toplevel):
