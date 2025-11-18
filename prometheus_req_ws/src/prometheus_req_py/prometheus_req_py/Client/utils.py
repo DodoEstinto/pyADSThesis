@@ -125,7 +125,6 @@ class AskIntegerDialog(simpledialog.Dialog):
     def apply(self):
         self.result = self.value
 
-            
     def buttonbox(self):
         apply_dark_theme(self)
 
