@@ -147,11 +147,11 @@ class AskIntegerDialog(simpledialog.Dialog):
     def check_ok(self):
         try:
             self.value = int(self.entry.get())
-            if(self.minvalue is not None):
-                if(self.value < self.minvalue):
+            if self.minvalue is not None:
+                if self.value < self.minvalue:
                     raise ValueError("Value below minimum")
-            if(self.maxvalue is not None):
-                if(self.value > self.maxvalue):
+            if self.maxvalue is not None:
+                if self.value > self.maxvalue:
                     raise ValueError("Value above maximum")
             self.ok()
         except ValueError:
