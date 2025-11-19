@@ -141,9 +141,9 @@ class AskIntegerDialog(simpledialog.Dialog):
         btn_cancel.pack(side="left", padx=10)
 
         self.bind("<Return>", self.check_ok)
-        self.bind("<Escape>", self.cancel)    
+        self.bind("<Escape>", self.cancel)
 
-    def check_ok(self):
+    def check_ok(self,event=None):
         try:
             self.value = int(self.entry.get())
             if self.minvalue is not None:
@@ -152,9 +152,8 @@ class AskIntegerDialog(simpledialog.Dialog):
             if self.maxvalue is not None:
                 if self.value > self.maxvalue:
                     raise ValueError("Value above maximum")
-            self.ok()
+            self.ok(event)
         except ValueError:
-            #flash red background
             self.entry.delete(0, tk.END)
             self.entry.insert(0, "Invalid input")
 
