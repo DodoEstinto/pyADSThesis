@@ -3,7 +3,7 @@
 
 ## Get started
 
-This project requires [ROS 2 Jazzy Jalisco](https://docs.ros.org/en/jazzy/Installation.html) and Ubuntu 24.04 to run.
+This project requires Python 3.12.x, [ROS 2 Jazzy Jalisco](https://docs.ros.org/en/jazzy/Installation.html) and Ubuntu 24.04 to run.
 
 First source ROS2, usually:
 ```bash
