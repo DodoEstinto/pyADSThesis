@@ -11,9 +11,8 @@ source /opt/ros/jazzy/setup.bash
 ```
 Inside the prometheus\_req\_ws run
 ```bash
-./build_and_launch.sh
+colcon build
 ```
-It will fail, ignore the error.
 Now run
 ```bash
 source ./install/source.bash
